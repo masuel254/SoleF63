@@ -187,8 +187,15 @@ tfoot td{font-weight:700;border-bottom:0;font-family:var(--f-display);font-size:
 
 /* ---------- Mode séance ---------- */
 .run{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;flex-direction:column;padding-block:calc(env(safe-area-inset-top,0px) + 18px) calc(env(safe-area-inset-bottom,0px) + 18px);padding-inline:20px;gap:16px;overflow:auto}
-.run-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
-.run-top h3{margin:0;font-family:var(--f-display);font-size:22px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.run-top{display:flex;justify-content:space-between;align-items:center;gap:10px 12px;flex-wrap:wrap}
+.run-top h3{margin:0;font-family:var(--f-display);font-size:22px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 180px;min-width:0}
+.snd{display:flex;gap:8px}
+.snd-btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:10px;padding:8px 12px;font-weight:600;font-size:14px;touch-action:manipulation}
+.snd-btn svg{width:20px;height:20px;flex:none}
+.snd-btn span{display:flex;flex-direction:column;line-height:1.1;text-align:left}
+.snd-btn em{font-style:normal;font-weight:500;font-size:11.5px;opacity:.85}
+.snd-btn[aria-pressed="true"]{background:var(--speed);border-color:var(--speed);color:#fff}
+.snd-btn[aria-pressed="false"] svg{opacity:.55}
 .run-clock{font-family:var(--f-display);font-weight:700;font-size:clamp(56px,13vw,120px);line-height:.95;text-align:center;letter-spacing:.01em}
 .run-clock.cd{color:var(--grade);animation:cdPulse 1s ease-out infinite}
 @keyframes cdPulse{0%{transform:scale(1.06)}60%{transform:scale(1)}}
@@ -983,11 +990,68 @@ tfoot td{font-weight:700;border-bottom:0;font-family:var(--f-display);font-size:
   }
   const beepCount = () => beep(880, .14);
   const beepChange = () => beep(1320, .5);
+
+  /* Voix : synthèse vocale du navigateur, en français */
+  let frVoice = null;
+  function pickVoice(){ try { frVoice = speechSynthesis.getVoices().find(v => /^fr(-|_|$)/i.test(v.lang)) || null; } catch(e){} }
+  try { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; } catch(e){}
+  function say(text, interrupt = false){
+    try {
+      if (interrupt) speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'fr-FR'; u.rate = 1.05; u.volume = 1;
+      if (frVoice) u.voice = frVoice;
+      speechSynthesis.speak(u);
+    } catch(e){}
+  }
+  const consigne = s => `${f1.format(s.v)} kilomètres heure, pente ${f0.format(s.p)}`;
+
+  /* Choix du son : bips et voix indépendants (les deux, l'un, l'autre ou aucun) */
+  let snd = { beep: true, voice: false };
+  try { Object.assign(snd, JSON.parse(localStorage.getItem(KEY + '.sound') || '{}')); } catch(e){}
+  const saveSnd = () => { try { localStorage.setItem(KEY + '.sound', JSON.stringify(snd)); } catch(e){} };
+
+  // Décompte à 3, 2, 1 s : bip si activé ; voix seule = elle compte « trois, deux, un »
+  function cueCount(n){
+    if (snd.beep) beepCount();
+    else if (snd.voice) say(['un', 'deux', 'trois'][n - 1], true);
+  }
+  // Changement de palier : bip long, puis la voix annonce la nouvelle consigne
+  function cueChange(s){
+    if (snd.beep) beepChange();
+    if (snd.voice) setTimeout(() => say(consigne(s), true), snd.beep ? 450 : 0);
+  }
+  function cueStart(first){
+    const s = cur.segs[rs.seg];
+    if (snd.beep) beepCount();
+    if (snd.voice) setTimeout(() => say((first ? "C'est parti. " : 'Reprise. ') + consigne(s), true), snd.beep ? 250 : 0);
+  }
+  function cueEnd(){
+    if (snd.beep) beepChange();
+    if (snd.voice) setTimeout(() => say(`Séance terminée. ${f2.format(rs.c.dist)} kilomètres, ${f0.format(rs.c.kcal)} kilocalories. Bravo.`, true), snd.beep ? 500 : 0);
+  }
+  function renderSnd(){
+    const b = $('rBeep'), v = $('rVoice'); if (!b) return;
+    b.setAttribute('aria-pressed', snd.beep); v.setAttribute('aria-pressed', snd.voice);
+    b.querySelector('em').textContent = snd.beep ? 'activés' : 'coupés';
+    v.querySelector('em').textContent = snd.voice ? 'activée' : 'coupée';
+  }
   $('btnRun').addEventListener('click', () => {
     const c = compute(cur);
     rs = { c, total: cur.minutes * 60, segSec: c.segMin * 60, elapsed: 0, playing: false, last: null, seg: 0, timer: null, lock: null };
     run.innerHTML = `
-      <div class="run-top"><h3>${esc(cur.name)}</h3><button class="btn" type="button" id="rQuit">Quitter</button></div>
+      <div class="run-top">
+        <h3>${esc(cur.name)}</h3>
+        <div class="snd" role="group" aria-label="Signaux sonores">
+          <button class="snd-btn" type="button" id="rBeep" aria-pressed="true">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5a5 5 0 0 0-5 5v3.2L3.5 14h13L15 10.7V7.5a5 5 0 0 0-5-5zM8 16.5a2 2 0 0 0 4 0"/></svg>
+            <span>Bips <em></em></span></button>
+          <button class="snd-btn" type="button" id="rVoice" aria-pressed="false">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8v4h3l4 3.5v-11L6 8H3zM13.5 7.2a4 4 0 0 1 0 5.6M15.8 5a7 7 0 0 1 0 10"/></svg>
+            <span>Voix <em></em></span></button>
+        </div>
+        <button class="btn" type="button" id="rQuit">Quitter</button>
+      </div>
       <div><div class="run-clock" id="rClock">0:00</div><div class="run-sub" id="rSub"></div></div>
       <div class="bar"><i id="rBar"></i></div>
       <div class="run-targets">
@@ -1002,6 +1066,9 @@ tfoot td{font-weight:700;border-bottom:0;font-family:var(--f-display);font-size:
         <button class="btn" type="button" id="rNext">Palier suivant</button>
       </div>`;
     run.hidden = false;
+    renderSnd();
+    $('rBeep').onclick = () => { snd.beep = !snd.beep; saveSnd(); renderSnd(); if (snd.beep) beepCount(); };
+    $('rVoice').onclick = () => { snd.voice = !snd.voice; saveSnd(); renderSnd(); if (snd.voice) say('Voix activée', true); else { try { speechSynthesis.cancel(); } catch(e){} } };
     $('rQuit').onclick = stopRun;
     $('rPlay').onclick = togglePlay;
     $('rPrev').onclick = () => { rs.elapsed = Math.max(0, (Math.floor(rs.elapsed / rs.segSec) - 1) * rs.segSec); tick(true); };
@@ -1012,7 +1079,7 @@ tfoot td{font-weight:700;border-bottom:0;font-family:var(--f-display);font-size:
     rs.playing = !rs.playing;
     $('rPlay').textContent = rs.playing ? 'Pause' : (rs.elapsed > 0 ? 'Reprendre' : 'Démarrer');
     if (rs.playing){
-      rs.last = performance.now(); beepCount();
+      rs.last = performance.now(); cueStart(rs.elapsed === 0);
       rs.timer = setInterval(() => tick(false), 250);
       try { rs.lock = await navigator.wakeLock?.request('screen'); } catch(e){}
     } else { clearInterval(rs.timer); try { rs.lock?.release(); } catch(e){} }
@@ -1022,7 +1089,7 @@ tfoot td{font-weight:700;border-bottom:0;font-family:var(--f-display);font-size:
     if (rs.playing && manual) rs.last = performance.now();
     rs.elapsed = Math.min(rs.elapsed, rs.total);
     const i = Math.min(N - 1, Math.floor(rs.elapsed / rs.segSec));
-    if (i !== rs.seg && rs.playing && !manual) beepChange();
+    if (i !== rs.seg && rs.playing && !manual && rs.elapsed < rs.total) cueChange(cur.segs[i]);
     rs.seg = i;
     const s = cur.segs[i], nx = cur.segs[i + 1];
     const inSeg = rs.elapsed - i * rs.segSec, leftSeg = rs.segSec - inSeg;
@@ -1031,7 +1098,7 @@ tfoot td{font-weight:700;border-bottom:0;font-family:var(--f-display);font-size:
     const counting = rs.playing && secLeft >= 1 && secLeft <= 3 && rs.elapsed < rs.total;
     if (counting && !manual){
       const key = i + ':' + secLeft;
-      if (rs.lastCd !== key){ rs.lastCd = key; beepCount(); }
+      if (rs.lastCd !== key){ rs.lastCd = key; cueCount(secLeft); }
     }
     $('rClock').classList.toggle('cd', counting);
     $('rClock').textContent = mmss(secLeft / 60);
@@ -1047,7 +1114,7 @@ tfoot td{font-weight:700;border-bottom:0;font-family:var(--f-display);font-size:
     const k = (i ? rs.c.rows[i - 1].kcalCum : 0) + r.kcal * frac;
     $('rD').textContent = f2.format(d); $('rK').textContent = f0.format(k);
     $('rLeft').textContent = mmss((rs.total - rs.elapsed) / 60);
-    if (rs.elapsed >= rs.total && rs.playing){ togglePlay(); $('rPlay').textContent = 'Terminé'; $('rClock').classList.remove('cd'); $('rClock').textContent = 'Bravo'; beepChange(); }
+    if (rs.elapsed >= rs.total && rs.playing){ togglePlay(); $('rPlay').textContent = 'Terminé'; $('rClock').classList.remove('cd'); $('rClock').textContent = 'Bravo'; cueEnd(); }
   }
   function stopRun(){
     if (rs){ clearInterval(rs.timer); try { rs.lock?.release(); } catch(e){} }
