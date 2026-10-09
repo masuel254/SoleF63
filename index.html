@@ -263,6 +263,10 @@ select.txt{appearance:auto}
 .ver{font-size:12px;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px}
 .ver::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok)}
 .empty{padding:24px 16px;text-align:center;color:var(--muted)}
+.empty-big{padding:22px 18px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;margin-top:8px}
+.empty-big > svg{width:100%;max-width:300px;height:auto;opacity:.85}
+.empty-big b{font-family:var(--f-display);font-size:24px}
+.empty-big .btn{align-self:stretch}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -307,9 +311,12 @@ select.txt{appearance:auto}
     next: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l8 6-8 6V6zM18 6v12"/></svg>'
   };
 
-  /* ===================== Programmes prédéfinis ===================== */
+  /* ===================== Anciens programmes prédéfinis =====================
+     L'appli n'en propose plus. Cette liste sert seulement à reconnaître, une fois, ceux qui
+     avaient été installés par une version précédente : on efface ceux restés intacts, on garde
+     (comme programmes personnels) ceux que l'utilisateur a modifiés. */
   const mk = (v, p) => v.map((x, i) => ({ v: x, p: p[i] }));
-  const SEEDS = [
+  const LEGACY_SEEDS = [
     { sid: 's1', name: 'Intervalles 40 min', minutes: 40, v: [3.6,3.8,5.8,3.6,5.8,3.6,5.8,3.6,5.8,3.6,3.6,5.8,3.5,5.8,3.6,5.8,4,4], p: [0,2,4,2,4,2,4,2,4,0,2,6,2,6,2,6,2,0] },
     { sid: 's2', name: 'Côte progressive', minutes: 30, v: [3.5,4,4.5,4.8,5,5,5,5,5,5,5,5,5,5,4.8,4.5,4,3.5], p: [0,1,2,3,4,5,6,7,8,8,7,6,5,4,3,2,1,0] },
     { sid: 's3', name: 'Marche active 45 min', minutes: 45, v: [3.8,4.5,5.2,5.5,5.5,6,5.5,6,5.5,6,5.5,6,5.5,6,5.5,5,4.5,3.8], p: [1,1,2,2,3,2,3,2,3,2,3,2,3,2,2,1,1,0] },
@@ -321,22 +328,24 @@ select.txt{appearance:auto}
     { sid: 's9', name: 'Pente modérée continue 45 min', minutes: 45, v: [4,4.3,4.6,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.6,4.3,4], p: [0,1,2,3,4,5,5,5,5,5,5,5,5,5,4,3,2,0] },
     { sid: 's10', name: 'Express 20 min', minutes: 20, v: [4,4.5,5,5.5,6,5,6.2,5,6.3,5,6.4,5,6.2,5,6,5,4.5,4], p: [0,1,2,3,3,2,3,2,4,2,4,2,3,2,3,2,1,0] }
   ];
-  const fromSeed = (s, k) => ({ id: uid(), sid: s.sid, name: s.name, minutes: s.minutes, updated: Date.now() - k * 1000, segs: mk(s.v, s.p) });
+  const sameAsSeed = (p, s) => p.minutes === s.minutes && p.name === s.name && p.segs.every((x, i) => x.v === s.v[i] && x.p === s.p[i]);
 
   /* ===================== Données ===================== */
+  const rawStored = ls.get(KEY, null);
+  const legacyWeight = ((Array.isArray(rawStored) ? rawStored : []).find(p => p && p.weight) || {}).weight;
   function loadProgs(){
-    let list = ls.get(KEY, null), offered = ls.get(KEY + '.seeds', []);
-    if (!Array.isArray(list) || !list.length){ list = []; offered = []; }
-    if (!Array.isArray(offered)) offered = [];
-    let added = false;
-    SEEDS.forEach((s, k) => {
-      if (offered.includes(s.sid)) return;
-      if (!list.some(p => p.sid === s.sid || p.name === s.name)){ list.push(fromSeed(s, k)); added = true; }
-      offered.push(s.sid);
-    });
+    let list = Array.isArray(rawStored) ? rawStored : [];
     list = list.filter(p => p && Array.isArray(p.segs) && p.segs.length === N);
-    if (added || !localStorage.getItem(KEY)) ls.set(KEY, list);
-    ls.set(KEY + '.seeds', offered);
+    let changed = false;
+    list = list.filter(p => {
+      if (!p.sid) return true;
+      changed = true;
+      const s = LEGACY_SEEDS.find(x => x.sid === p.sid);
+      if (s && sameAsSeed(p, s)) return false;     // prédéfini jamais modifié : on l'efface
+      delete p.sid; return true;                     // prédéfini modifié : il devient un programme personnel
+    });
+    if (changed || !localStorage.getItem(KEY)) ls.set(KEY, list);
+    try { localStorage.removeItem(KEY + '.seeds'); } catch(e){}
     return list;
   }
   let progs = loadProgs();
@@ -346,14 +355,14 @@ select.txt{appearance:auto}
   // Réglages globaux (poids unique, vitesses max, sons). Migration depuis l'ancienne version.
   const settings = Object.assign({ weight: null, walkMax: 5.8, runMax: 11, beep: true, voice: false, sound: 'doux' }, ls.get(KEY + '.settings', {}));
   if (settings.weight == null){
-    settings.weight = (progs.find(p => p.weight) || {}).weight || 120;
+    settings.weight = legacyWeight || 120;
     Object.assign(settings, ls.get(KEY + '.sound', {}));
   }
   const saveSettings = () => ls.set(KEY + '.settings', settings);
   saveSettings();
   let lastId = ls.get(KEY + '.last', null);
   const byId = id => progs.find(p => p.id === id);
-  const kindOf = p => p.sid ? 'seed' : (p.origin === 'auto' ? 'auto' : 'user');
+  const kindOf = p => p.origin === 'auto' ? 'auto' : 'user';
 
   /* ===================== Calculs (formules du fichier Excel TradeMil) ===================== */
   function compute(p, weight = settings.weight){
@@ -443,7 +452,7 @@ select.txt{appearance:auto}
 
   /* ===================== État de l'interface ===================== */
   const S = {
-    tab: 'list', view: 'list', detailId: null, filter: 'all',
+    tab: 'list', view: 'list', detailId: null,
     create: Object.assign({ mode: 'auto', minutes: 40, kcal: 400, type: 'walk', variant: 'intervals', name: '', nameTouched: false,
       mMinutes: 40, mStart: 'flat', mCopy: null, mName: '' }, ls.get(KEY + '.auto', {}), { nameTouched: false, name: '' }),
     edit: null, res: null
@@ -503,25 +512,31 @@ select.txt{appearance:auto}
 
   /* ===================== Vue : Programmes ===================== */
   function viewList(){
-    const mine = progs.filter(p => !p.sid).length, seeds = progs.length - mine;
-    // Tous les filtres : du plus court au plus long, puis par nom à durée égale.
-    const byTime = (a, b) => a.minutes - b.minutes || a.name.localeCompare(b.name, 'fr');
-    let list = progs.slice().sort(byTime);
-    if (S.filter === 'mine') list = list.filter(p => !p.sid);
-    if (S.filter === 'seed') list = list.filter(p => p.sid);
-    const chip = (k, l) => `<button type="button" class="chip${S.filter === k ? ' on' : ''}" data-filter="${k}">${l}</button>`;
-    return `<header class="hd"><h1>Programmes</h1><span class="sub">${progs.length} programme${progs.length > 1 ? 's' : ''} · calculés pour ${fp(settings.weight)} kg</span></header>
+    // Du plus court au plus long, puis par nom à durée égale.
+    const list = progs.slice().sort((a, b) => a.minutes - b.minutes || a.name.localeCompare(b.name, 'fr'));
+    if (!list.length){
+      return `<header class="hd"><h1>Programmes</h1><span class="sub">Aucun programme enregistré</span></header>
+        <div class="scroll">
+          <div class="card empty-big">
+            ${profileSvg(mk([3.6,4,4.4,5.2,4.4,5.2,4.4,5.2,4.4,5.2,4.4,5.2,4.4,5.2,4.4,5.2,4,3.6], [0,1,2,4,2,4,2,4,2,4,2,4,2,4,2,4,1,0]), { W: 300, H: 90, lw: 2 })}
+            <b>Créez votre premier programme</b>
+            <span class="small">En automatique, indiquez la durée et les kcal à brûler : l'appli calcule les 18 paliers. En manuel, vous réglez chaque palier vous-même.</span>
+            <button type="button" class="btn pri" data-act="new">${ICON.plus}Créer un programme</button>
+          </div>
+        </div>`;
+    }
+    return `<header class="hd"><h1>Programmes</h1><span class="sub">${list.length} programme${list.length > 1 ? 's' : ''} · calculés pour ${fp(settings.weight)} kg</span></header>
       <div class="scroll">
-        <div class="chips">${chip('all', 'Tous')}${chip('mine', `Les miens · ${mine}`)}${chip('seed', `Prédéfinis · ${seeds}`)}</div>
-        ${list.length ? list.map(cardHtml).join('') : `<div class="card empty">Aucun programme ici pour l'instant.<br>Créez-en un avec le bouton ci-dessous.</div>`}
-        <div style="height:70px"></div>
+        ${list.map(cardHtml).join('')}
+        <span class="small center">Glissez une carte vers la gauche pour la supprimer.</span>
+        <div style="height:66px"></div>
       </div>
       <button type="button" class="fab" data-act="new">${ICON.plus}Nouveau programme</button>`;
   }
   const avgLine = c => `<span class="m avg"><span class="vs">Vmoy. ${f1.format(c.avgV)} km/h</span> · <span class="ps">Pmoy. ${f1.format(c.avgP)} %</span></span>`;
   function cardHtml(p){
     const c = compute(p), k = kindOf(p);
-    const badge = k === 'auto' ? '<span class="badge mine">Auto</span>' : k === 'user' ? '<span class="badge mine">Perso</span>' : '';
+    const badge = k === 'auto' ? '<span class="badge mine">Auto</span>' : '';
     return `<div class="swr" data-swr="${p.id}"><button type="button" class="swdel" data-swdel="${p.id}" tabindex="-1">Supprimer</button><button type="button" class="card pcard" data-open="${p.id}"><span class="nm">${esc(p.name)}${badge}</span>${miniSvg(p.segs)}<span class="m">${f0.format(p.minutes)} min · ${f2.format(c.dist)} km · ${f0.format(c.kcal)} kcal</span>${avgLine(c)}</button></div>`;
   }
 
@@ -599,8 +614,8 @@ select.txt{appearance:auto}
     return head + `<div class="scroll">${seg}
         <div class="card">
           <div class="field"><span class="lab">Durée</span>${stepHtml('mmin', c.mMinutes, 'min')}</div>
-          <div class="field"><span class="lab">Point de départ</span><div class="mini-seg">${segBtns('mstart', c.mStart, [['flat', 'Profil plat'], ['copy', 'Copie']])}</div></div>
-          ${c.mStart === 'copy' ? `<div class="field" style="flex-direction:column;align-items:stretch"><label class="lab" for="m-copy">Programme à copier</label><select class="txt" id="m-copy">${opts}</select></div>` : ''}
+          <div class="field"><span class="lab">Point de départ</span>${progs.length ? `<div class="mini-seg">${segBtns('mstart', c.mStart, [['flat', 'Profil plat'], ['copy', 'Copie']])}</div>` : '<span class="val">Profil plat</span>'}</div>
+          ${c.mStart === 'copy' && progs.length ? `<div class="field" style="flex-direction:column;align-items:stretch"><label class="lab" for="m-copy">Programme à copier</label><select class="txt" id="m-copy">${opts}</select></div>` : ''}
         </div>
         <div class="card namef"><label for="m-name">Nom du programme</label><input class="txt" id="m-name" type="text" maxlength="60" placeholder="Ex. Fractionné du mardi" value="${esc(c.mName)}" autocomplete="off"></div>
         <p class="small" style="margin:0 4px">${c.mStart === 'flat' ? 'Les 18 paliers démarrent à 4,0 km/h et 0 % de pente.' : 'Les paliers du programme choisi sont repris, avec la durée indiquée ci-dessus.'} Vous les réglez à l'écran suivant, puis vous enregistrez.</p>
@@ -905,10 +920,9 @@ select.txt{appearance:auto}
 
   /* ===================== Actions (délégation) ===================== */
   document.addEventListener('click', e => {
-    const t = e.target.closest('[data-act],[data-open],[data-filter],[data-cmode],[data-ctype],[data-cvar],[data-mstart],[data-snd],[data-sw]');
+    const t = e.target.closest('[data-act],[data-open],[data-cmode],[data-ctype],[data-cvar],[data-mstart],[data-snd],[data-sw]');
     if (!t || t.closest('#run')) return;
     if (t.dataset.open){ go('detail', { id: t.dataset.open }); return; }
-    if (t.dataset.filter){ S.filter = t.dataset.filter; render(); return; }
     if (t.dataset.cmode){ S.create.mode = t.dataset.cmode; saveCreatePrefs(); render(); return; }
     if (t.dataset.ctype){ S.create.type = t.dataset.ctype; t.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); refreshCreate(); return; }
     if (t.dataset.cvar){ S.create.variant = t.dataset.cvar; t.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); refreshCreate(); return; }
@@ -942,7 +956,7 @@ select.txt{appearance:auto}
       case 'm-go': {
         const c = S.create, name = ($('m-name').value.trim()) || 'Nouveau programme';
         let segs = Array.from({ length: N }, () => ({ v: 4, p: 0 }));
-        if (c.mStart === 'copy'){ const src = byId($('m-copy') ? $('m-copy').value : c.mCopy); if (src) segs = clone(src.segs); }
+        if (c.mStart === 'copy' && progs.length){ const src = byId($('m-copy') ? $('m-copy').value : c.mCopy); if (src) segs = clone(src.segs); }
         c.mName = ''; openEditor({ id: null, name, minutes: c.mMinutes, segs }, { isNew: true, origin: 'user', returnTo: 'create' });
         break;
       }
@@ -1024,7 +1038,7 @@ select.txt{appearance:auto}
       list = Array.isArray(raw) ? raw : raw.programs;
       if (!Array.isArray(list)) throw 0;
       list = list.filter(p => p && typeof p.name === 'string' && Array.isArray(p.segs) && p.segs.length === N).map(p => ({
-        id: uid(), sid: p.sid, origin: p.origin, name: p.name.slice(0, 60), minutes: clamp(Math.round(+p.minutes || 40), 5, 240), updated: Date.now(),
+        id: uid(), origin: p.origin, name: p.name.slice(0, 60), minutes: clamp(Math.round(+p.minutes || 40), 5, 240), updated: Date.now(),
         segs: p.segs.map(s => ({ v: clamp(r1(+s.v || 4), VMIN, VMAX), p: clamp(r1(+s.p || 0), PMIN, PMAX) }))
       }));
       if (!list.length) throw 0;
