@@ -72,13 +72,23 @@ input,select,textarea{font:inherit;color:inherit;font-size:max(16px,1em)}
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap}
 .chip.on{background:var(--ink);border-color:var(--ink);color:var(--bg)}
-/* Glisser vers la gauche pour supprimer */
-.swr{position:relative;border-radius:14px;overflow:hidden}
-.swdel{position:absolute;top:0;right:0;bottom:0;width:100px;color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;visibility:hidden}
-.swr.reveal{background:var(--danger)}
-.swr.reveal .swdel{visibility:visible}
-.swr .pcard{position:relative;z-index:1;touch-action:pan-y;transition:transform .2s ease}
-.swr.drag .pcard{transition:none}
+/* Tuiles de programmes (2 par ligne) */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 11px;display:flex;flex-direction:column;gap:3px;min-width:0;text-align:left;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;transition:transform .12s}
+.tile:active{background:var(--surface-2)}
+.tile.press{transform:scale(.97)}
+.tile .top{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.tile .d{font-size:12.5px;font-weight:700;color:var(--muted);background:var(--surface-2);border-radius:6px;padding:2px 7px}
+.tile .a{font-size:10.5px;font-weight:700;color:var(--speed);letter-spacing:.05em}
+.tile .kr{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.tile .k{font-family:var(--f-display);font-weight:700;font-size:29px;line-height:1.05}
+.tile .k small{font-family:var(--f-body);font-size:12px;color:var(--muted);font-weight:600;margin-left:3px}
+.tile .km{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.tile .t{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile svg{width:100%;height:26px;display:block}
+.tile .s{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .s .vs{color:var(--speed);font-weight:600} .tile .s .ps{color:var(--grade);font-weight:600}
+.chip small{opacity:.7;margin-left:2px;font-weight:600}
 .pcard{width:100%;text-align:left;padding:12px 14px;display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:2px 12px;align-items:center}
 .pcard:active{background:var(--surface-2)}
 .pcard .nm{font-weight:600;font-size:16.5px;line-height:1.25;overflow-wrap:anywhere}
@@ -525,19 +535,38 @@ select.txt{appearance:auto}
           </div>
         </div>`;
     }
+    // Rangée de durées : « Toutes » puis une puce par durée existante
+    const durs = [...new Set(list.map(p => p.minutes))];
+    if (S.dur && !durs.includes(S.dur)) S.dur = 0;
+    const shown = S.dur ? list.filter(p => p.minutes === S.dur) : list;
+    const chip = (d, l) => `<button type="button" class="chip${(S.dur || 0) === d ? ' on' : ''}" data-dur="${d}">${l}</button>`;
     return `<header class="hd"><h1>Programmes</h1><span class="sub">${list.length} programme${list.length > 1 ? 's' : ''} · calculés pour ${fp(settings.weight)} kg</span></header>
       <div class="scroll">
-        ${list.map(cardHtml).join('')}
-        <span class="small center">Glissez une carte vers la gauche pour la supprimer.</span>
+        <div class="chips" id="durChips">${chip(0, `Toutes <small>${list.length}</small>`)}${durs.map(d => chip(d, `${d} min${list.filter(p => p.minutes === d).length > 1 ? ` <small>${list.filter(p => p.minutes === d).length}</small>` : ''}`)).join('')}</div>
+        <div class="tiles">${shown.map(tileHtml).join('')}</div>
+        <span class="small center">Appui long sur une tuile pour la supprimer, la dupliquer ou la lancer.</span>
         <div style="height:66px"></div>
       </div>
       <button type="button" class="fab" data-act="new">${ICON.plus}Nouveau programme</button>`;
   }
   const avgLine = c => `<span class="m avg"><span class="vs">Vmoy. ${f1.format(c.avgV)} km/h</span> · <span class="ps">Pmoy. ${f1.format(c.avgP)} %</span></span>`;
-  function cardHtml(p){
-    const c = compute(p), k = kindOf(p);
-    const badge = k === 'auto' ? '<span class="badge mine">Auto</span>' : '';
-    return `<div class="swr" data-swr="${p.id}"><button type="button" class="swdel" data-swdel="${p.id}" tabindex="-1">Supprimer</button><button type="button" class="card pcard" data-open="${p.id}"><span class="nm">${esc(p.name)}${badge}</span>${miniSvg(p.segs)}<span class="m">${f0.format(p.minutes)} min · ${f2.format(c.dist)} km · ${f0.format(c.kcal)} kcal</span>${avgLine(c)}</button></div>`;
+  // Nom affiché : version courte pour un programme automatique dont le nom n'a pas été changé
+  const AUTO_NAME = /^(Marche|Course) (intervalles|pyramide|régulier) \d+ min · \d+ kcal$/i;
+  function shortName(p){
+    const m = AUTO_NAME.exec(p.name || '');
+    if (!m) return p.name;
+    const f = m[2].charAt(0).toUpperCase() + m[2].slice(1).toLowerCase();
+    return /^course$/i.test(m[1]) ? `Course · ${f}` : f;
+  }
+  function tileHtml(p){
+    const c = compute(p);
+    return `<button type="button" class="tile" data-open="${p.id}" data-tile="${p.id}">
+      <span class="top"><span class="d">${f0.format(p.minutes)} min</span>${kindOf(p) === 'auto' ? '<span class="a">AUTO</span>' : ''}</span>
+      <span class="kr"><span class="k">${f0.format(c.kcal)}<small>kcal</small></span><span class="km">${f2.format(c.dist)} km</span></span>
+      <span class="t">${esc(shortName(p))}</span>
+      ${profileSvg(p.segs, { W: 150, H: 26, pad: .7, lw: 1.6, r: 1 })}
+      <span class="s"><span class="vs">${f1.format(c.avgV)} km/h</span> · <span class="ps">${f1.format(c.avgP)} %</span></span>
+    </button>`;
   }
 
   /* ===================== Vue : Fiche ===================== */
@@ -822,74 +851,51 @@ select.txt{appearance:auto}
     toastT = setTimeout(() => el.hidden = true, 5000);
   }
 
-  /* ===================== Glisser vers la gauche pour supprimer ===================== */
-  const SW_OPEN = 100;
-  let sw = null, swOpenId = null, swJustDragged = false;
-  function swSet(row, x, anim = true){
-    const c = row.querySelector('.pcard'); row.classList.toggle('drag', !anim);
-    c.style.transform = x ? `translateX(${x}px)` : '';
-    clearTimeout(row._hideT);
-    if (x) row.classList.add('reveal');
-    else row._hideT = setTimeout(() => row.classList.remove('reveal'), 220);   // après l'animation de fermeture
-  }
-  function swCloseAll(except){
-    document.querySelectorAll('.swr').forEach(r => { if (r !== except) swSet(r, 0); });
-    if (!except) swOpenId = null;
-  }
+  /* ===================== Appui long sur une tuile ===================== */
   function deleteWithUndo(id){
     const i = progs.findIndex(p => p.id === id); if (i < 0) return;
     const [p] = progs.splice(i, 1), wasLast = lastId === id;
     if (wasLast){ lastId = null; ls.set(KEY + '.last', null); }
-    saveProgs(); swOpenId = null;
-    const row = document.querySelector(`.swr[data-swr="${id}"]`);
-    const done = () => render();
-    if (row){ row.style.transition = 'opacity .18s, max-height .22s'; row.style.maxHeight = row.offsetHeight + 'px'; requestAnimationFrame(() => { row.style.opacity = '0'; row.style.maxHeight = '0px'; }); setTimeout(done, 230); } else done();
-    toastUndo(`« ${p.name} » supprimé`, () => {
+    saveProgs();
+    const tile = document.querySelector(`[data-tile="${id}"]`);
+    if (tile){ tile.style.transition = 'opacity .18s, transform .18s'; tile.style.opacity = '0'; tile.style.transform = 'scale(.9)'; setTimeout(render, 190); } else render();
+    toastUndo(`« ${shortName(p)} · ${p.minutes} min » supprimé`, () => {
       progs.splice(Math.min(i, progs.length), 0, p);
       if (wasLast){ lastId = id; ls.set(KEY + '.last', id); }
       saveProgs(); render(); toast('Programme restauré');
     });
   }
-  document.addEventListener('pointerdown', e => {
-    const card = e.target.closest('.swr .pcard'); if (!card) { if (swOpenId && !e.target.closest('.swdel')) swCloseAll(); return; }
-    const row = card.parentElement;
-    if (swOpenId && swOpenId !== row.dataset.swr) swCloseAll();
-    sw = { row, id: row.dataset.swr, x0: e.clientX, y0: e.clientY, base: swOpenId === row.dataset.swr ? -SW_OPEN : 0, dx: 0, on: false, pid: e.pointerId };
-  });
-  document.addEventListener('pointermove', e => {
-    if (!sw || e.pointerId !== sw.pid) return;
-    const dx = e.clientX - sw.x0, dy = e.clientY - sw.y0;
-    if (!sw.on){
-      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)){ sw = null; return; }   // défilement vertical
-      if (Math.abs(dx) < 10) return;
-      sw.on = true;
-      try { sw.row.querySelector('.pcard').setPointerCapture(e.pointerId); } catch(err){}
-    }
-    sw.dx = dx;
-    const w = sw.row.offsetWidth;
-    let x = Math.min(0, sw.base + dx);
-    if (x < -SW_OPEN) x = -SW_OPEN - (-x - SW_OPEN) * .6;   // résistance au-delà du bouton
-    swSet(sw.row, Math.max(x, -w), false);
-  });
-  function swEnd(e){
-    if (!sw || (e && e.pointerId !== sw.pid)) return;
-    const s = sw; sw = null;
-    if (!s.on) return;
-    swJustDragged = true; setTimeout(() => swJustDragged = false, 50);
-    const x = s.base + s.dx, w = s.row.offsetWidth;
-    if (x < -w * .6){ swSet(s.row, -w); deleteWithUndo(s.id); return; }   // glissé jusqu'au bout : suppression directe
-    if (x < -SW_OPEN / 2){ swSet(s.row, -SW_OPEN); swOpenId = s.id; }
-    else { swSet(s.row, 0); if (swOpenId === s.id) swOpenId = null; }
+  function tileMenu(p){
+    const c = compute(p);
+    openSheet(`<h3>${esc(shortName(p))} · ${p.minutes} min</h3><p>${f0.format(c.kcal)} kcal · ${f2.format(c.dist)} km · ${f1.format(c.avgV)} km/h · ${f1.format(c.avgP)} %</p>
+      <button type="button" class="btn pri" data-act="tm-run">${ICON.play}Lancer la séance</button>
+      <button type="button" class="btn" data-act="tm-open">Ouvrir la fiche</button>
+      <button type="button" class="btn" data-act="tm-dup">Dupliquer</button>
+      <button type="button" class="btn danger" data-act="tm-del">Supprimer</button>
+      <button type="button" class="btn" data-act="sh-close">Annuler</button>`, m => {
+      m.querySelector('[data-act="tm-run"]').onclick = () => { closeSheet(); startRun(p); };
+      m.querySelector('[data-act="tm-open"]').onclick = () => { closeSheet(); go('detail', { id: p.id }); };
+      m.querySelector('[data-act="tm-dup"]').onclick = () => { closeSheet(); const d = Object.assign(clone(p), { id: uid(), name: p.name + ' (copie)', updated: Date.now() }); delete d.sid; progs.push(d); saveProgs(); render(); toast('Programme dupliqué'); };
+      m.querySelector('[data-act="tm-del"]').onclick = () => { closeSheet(); deleteWithUndo(p.id); };
+    });
   }
-  document.addEventListener('pointerup', swEnd);
-  document.addEventListener('pointercancel', swEnd);
-  // Après un glissement, le « clic » final n'ouvre pas la fiche ; un appui sur une carte ouverte la referme.
-  document.addEventListener('click', e => {
-    const del = e.target.closest('[data-swdel]');
-    if (del){ e.stopPropagation(); deleteWithUndo(del.dataset.swdel); return; }
-    const card = e.target.closest('.swr .pcard');
-    if (card && (swJustDragged || swOpenId)){ e.stopPropagation(); e.preventDefault(); if (!swJustDragged) swCloseAll(); }
-  }, true);
+  let lp = null, lpFired = false;
+  const lpCancel = () => { if (lp){ clearTimeout(lp.t); lp.el.classList.remove('press'); lp = null; } };
+  document.addEventListener('pointerdown', e => {
+    const tile = e.target.closest('[data-tile]'); if (!tile) return;
+    lpFired = false; lpCancel();
+    tile.classList.add('press');
+    lp = { el: tile, x: e.clientX, y: e.clientY, t: setTimeout(() => {
+      const p = byId(tile.dataset.tile); lpFired = true; lpCancel();
+      try { navigator.vibrate && navigator.vibrate(12); } catch(err){}
+      if (p) tileMenu(p);
+    }, 480) };
+  });
+  document.addEventListener('pointermove', e => { if (lp && (Math.abs(e.clientX - lp.x) > 10 || Math.abs(e.clientY - lp.y) > 10)) lpCancel(); });
+  ['pointerup', 'pointercancel'].forEach(ev => document.addEventListener(ev, lpCancel));
+  document.addEventListener('contextmenu', e => { if (e.target.closest('[data-tile]')) e.preventDefault(); });
+  // Le « clic » qui suit un appui long n'ouvre pas la fiche
+  document.addEventListener('click', e => { if (lpFired && e.target.closest('[data-tile]')){ e.stopPropagation(); e.preventDefault(); lpFired = false; } }, true);
 
   function pickSheet(onPick, currentId){
     openSheet(`<h3>Choisir un programme</h3><div class="pick">${progs.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0)).map(p => {
@@ -920,9 +926,10 @@ select.txt{appearance:auto}
 
   /* ===================== Actions (délégation) ===================== */
   document.addEventListener('click', e => {
-    const t = e.target.closest('[data-act],[data-open],[data-cmode],[data-ctype],[data-cvar],[data-mstart],[data-snd],[data-sw]');
+    const t = e.target.closest('[data-act],[data-open],[data-dur],[data-cmode],[data-ctype],[data-cvar],[data-mstart],[data-snd],[data-sw]');
     if (!t || t.closest('#run')) return;
     if (t.dataset.open){ go('detail', { id: t.dataset.open }); return; }
+    if (t.dataset.dur != null){ S.dur = +t.dataset.dur; const x = $('durChips') ? $('durChips').scrollLeft : 0; render(); if ($('durChips')) $('durChips').scrollLeft = x; return; }
     if (t.dataset.cmode){ S.create.mode = t.dataset.cmode; saveCreatePrefs(); render(); return; }
     if (t.dataset.ctype){ S.create.type = t.dataset.ctype; t.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); refreshCreate(); return; }
     if (t.dataset.cvar){ S.create.variant = t.dataset.cvar; t.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); refreshCreate(); return; }
