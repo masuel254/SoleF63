@@ -4,7 +4,7 @@
 // sur les téléphones et elle s'affiche en bas de la liste des programmes.
 // Avec le déploiement automatique (.github/workflows/deploy.yml), elle est remplacée
 // toute seule à chaque envoi sur GitHub. Sans lui, changez-la à la main à chaque mise à jour.
-const VERSION = '2026-10-09 13:31';
+const VERSION = '2026-10-09 13:46';
 const CACHE = 'sole-f63-' + VERSION.replace(/\D/g, '');
 const CORE = [
   './',
