@@ -1,6 +1,11 @@
-// Service worker : l'appli fonctionne hors connexion après la première visite.
-// Changer CACHE à chaque mise à jour du site pour forcer le rafraîchissement.
-const CACHE = 'sole-f63-v1';
+// Service worker de l'appli Sole F63 Programmes.
+//
+// VERSION : date et heure de la mise en ligne. C'est elle qui déclenche la mise à jour
+// sur les téléphones et elle s'affiche en bas de la liste des programmes.
+// Avec le déploiement automatique (.github/workflows/deploy.yml), elle est remplacée
+// toute seule à chaque envoi sur GitHub. Sans lui, changez-la à la main à chaque mise à jour.
+const VERSION = '2026-10-09 13:31';
+const CACHE = 'sole-f63-' + VERSION.replace(/\D/g, '');
 const CORE = [
   './',
   './index.html',
@@ -11,16 +16,27 @@ const CORE = [
   './icons/apple-touch-icon.png'
 ];
 
+// Nouvelle version : on met tout en cache et on prend la main tout de suite
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE)
+      .then((c) => c.addAll(CORE.map((u) => new Request(u, { cache: 'reload' }))))
+      .then(() => self.skipWaiting())
+  );
 });
 
+// On efface les anciennes versions
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('sole-f63-') && k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
+});
+
+// La page demande la version pour l'afficher
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'version' && e.ports[0]) e.ports[0].postMessage(VERSION);
 });
 
 self.addEventListener('fetch', (e) => {
@@ -28,17 +44,20 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
-  // Page : réseau d'abord (pour recevoir les mises à jour), cache si hors ligne
+  // Page : toujours la dernière version en ligne, le cache seulement hors connexion
   if (req.mode === 'navigate') {
     e.respondWith(
-      fetch(req)
-        .then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put('./index.html', copy)); return res; })
+      fetch(url.href, { cache: 'no-cache' })
+        .then((res) => {
+          if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put('./index.html', copy)); }
+          return res;
+        })
         .catch(() => caches.match('./index.html'))
     );
     return;
   }
 
-  // Polices Google et fichiers du site : cache d'abord, puis réseau
+  // Icônes, manifeste, polices : cache d'abord, puis réseau
   if (url.origin === location.origin || url.hostname.endsWith('gstatic.com') || url.hostname.endsWith('googleapis.com')) {
     e.respondWith(
       caches.match(req).then((hit) => hit || fetch(req).then((res) => {

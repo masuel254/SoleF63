@@ -1,0 +1,50 @@
+# Déploiement automatique sur GitHub Pages.
+# À chaque envoi sur la branche main : la ligne VERSION de sw.js reçoit la date et l'heure
+# (heure de Paris), puis le site est publié. Les téléphones récupèrent la nouvelle version
+# à la prochaine ouverture de l'appli.
+#
+# Réglage à faire une seule fois : Settings → Pages → Source = « GitHub Actions ».
+
+name: Mise en ligne
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Récupérer les fichiers
+        uses: actions/checkout@v4
+
+      - name: Dater la version
+        run: |
+          V=$(TZ=Europe/Paris date +'%Y-%m-%d %H:%M')
+          sed -i "s/^const VERSION = '.*';/const VERSION = '$V';/" sw.js
+          grep "^const VERSION" sw.js
+
+      - name: Préparer GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Envoyer le site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Publier
+        id: deployment
+        uses: actions/deploy-pages@v4

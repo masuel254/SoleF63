@@ -11,7 +11,8 @@ Chaque programme est découpé en **18 paliers de durée égale** (1/18 du temps
 - Graphique : histogramme des vitesses et courbe de pente, modifiable en glissant le doigt
 - Programmes nommés, enregistrés automatiquement, dupliquables
 - 10 programmes de marche prédéfinis
-- Mode séance : décompte par palier, consignes en grand, bip au changement, écran maintenu allumé
+- Création automatique : temps total + kcal visées + marche ou course → programme calculé
+- Mode séance : décompte par palier, consignes en grand, 3 bips avant chaque changement, écran maintenu allumé
 - Export / import des programmes (fichier .json) pour passer d'un appareil à l'autre
 - Installable sur téléphone et utilisable hors connexion
 
@@ -26,12 +27,14 @@ kcal                = (0,1 × v + 1,8 × v × pente/100 + 3,5) × poids / 200 ×
 
 C'est l'équation ACSM de la **marche**. Elle reste fiable jusqu'à 6-7 km/h ; en course (au-delà d'environ 8 km/h) elle sous-estime la dépense.
 
-## Mise en ligne sur GitHub Pages
+## Mise en ligne sur GitHub Pages (une seule fois)
 
 1. Sur github.com, créer un dépôt public, par exemple `sole-f63`.
-2. Bouton **Add file → Upload files**, glisser tout le contenu du dossier (index.html, sw.js, manifest.webmanifest, README.md et le dossier icons), puis **Commit changes**.
-3. **Settings → Pages** : Source = *Deploy from a branch*, Branch = `main`, dossier `/ (root)`, **Save**.
-4. Après une à deux minutes, l'appli est en ligne à l'adresse `https://<votre-compte>.github.io/sole-f63/`.
+2. Bouton **Add file → Upload files**, glisser index.html, sw.js, manifest.webmanifest, README.md et le dossier icons, puis **Commit changes**.
+3. Ajouter le déploiement automatique : **Add file → Create new file**, nommer le fichier `.github/workflows/deploy.yml` (taper le nom en entier, les `/` créent les dossiers), coller le contenu du fichier `deploy.yml` fourni, puis **Commit changes**.
+   Le dossier `.github` est souvent masqué sur Mac et Windows, d'où cette étape à part.
+4. **Settings → Pages** : Source = **GitHub Actions**.
+5. Onglet **Actions** : le déploiement « Mise en ligne » tourne une à deux minutes. Ensuite l'appli est en ligne sur `https://<votre-compte>.github.io/sole-f63/`.
 
 ## Installer sur le téléphone
 
@@ -40,7 +43,16 @@ C'est l'équation ACSM de la **marche**. Elle reste fiable jusqu'à 6-7 km/h ; e
 
 ## Mettre à jour le site
 
-Remplacer les fichiers modifiés dans le dépôt, puis changer la ligne `const CACHE = 'sole-f63-v1'` dans `sw.js` (v2, v3…) pour que les téléphones récupèrent la nouvelle version.
+Il suffit de remplacer les fichiers modifiés dans le dépôt (**Add file → Upload files**). Le déploiement automatique :
+
+1. inscrit la date et l'heure du jour dans la ligne `const VERSION` de `sw.js` ;
+2. publie le site.
+
+À la prochaine ouverture, l'appli détecte la nouvelle version, l'installe et se recharge toute seule (message « Appli mise à jour »). Elle vérifie aussi quand on la réaffiche après une mise en veille. Si une séance est en cours, la mise à jour attend la fin de la séance.
+
+La version en service s'affiche en petit en bas de la liste des programmes : « Version du 09/10/2026 à 13h35 ».
+
+Sans le déploiement automatique (Source = *Deploy from a branch*), il faut changer la date de la ligne `const VERSION` à la main avant chaque envoi.
 
 ## Données
 
@@ -48,4 +60,8 @@ Les programmes sont stockés dans le navigateur de chaque appareil (localStorage
 
 ## Limites machine
 
-Vitesse 0,8 à 18 km/h, pente 0 à 15 %. À vérifier sur la notice du tapis ; modifiables en haut du script (`VMIN`, `VMAX`, `PMIN`, `PMAX`).
+Vitesse 0,8 à 18 km/h, pente 0 à 15 % (maximum du tapis). Modifiables en haut du script (`VMIN`, `VMAX`, `PMIN`, `PMAX`).
+
+Création automatique : vitesse max 5,8 km/h en marche et 11 km/h en course, pente jusqu'à 15 % dans les deux cas.
+
+Mode séance : 3 bips courts à 3, 2 et 1 seconde de chaque changement de palier, puis un bip long au changement.
