@@ -72,6 +72,13 @@ input,select,textarea{font:inherit;color:inherit;font-size:max(16px,1em)}
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap}
 .chip.on{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+/* Glisser vers la gauche pour supprimer */
+.swr{position:relative;border-radius:14px;overflow:hidden}
+.swdel{position:absolute;top:0;right:0;bottom:0;width:100px;color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;visibility:hidden}
+.swr.reveal{background:var(--danger)}
+.swr.reveal .swdel{visibility:visible}
+.swr .pcard{position:relative;z-index:1;touch-action:pan-y;transition:transform .2s ease}
+.swr.drag .pcard{transition:none}
 .pcard{width:100%;text-align:left;padding:12px 14px;display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:2px 12px;align-items:center}
 .pcard:active{background:var(--surface-2)}
 .pcard .nm{font-weight:600;font-size:16.5px;line-height:1.25;overflow-wrap:anywhere}
@@ -234,7 +241,8 @@ select.txt{appearance:auto}
 .done-card{padding:18px;display:flex;flex-direction:column;gap:12px;align-items:stretch;text-align:center}
 .done-card h2{margin:0;font-family:var(--f-display);font-size:34px}
 
-#toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 12px);transform:translateX(-50%);box-shadow:0 8px 24px -10px rgba(0,0,0,.5);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:60;font-size:15px;max-width:calc(100% - 32px);text-align:center}
+#toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 12px);transform:translateX(-50%);box-shadow:0 8px 24px -10px rgba(0,0,0,.5);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:60;font-size:15px;max-width:calc(100% - 32px);text-align:center;display:flex;align-items:center;gap:14px}
+#toast .undo{color:var(--bg);font-weight:700;text-decoration:underline;text-underline-offset:3px;white-space:nowrap;padding:2px 0}
 .ver{font-size:12px;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px}
 .ver::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok)}
 .empty{padding:24px 16px;text-align:center;color:var(--muted)}
@@ -478,9 +486,11 @@ select.txt{appearance:auto}
   /* ===================== Vue : Programmes ===================== */
   function viewList(){
     const mine = progs.filter(p => !p.sid).length, seeds = progs.length - mine;
+    // « Tous » : les plus récents en haut. « Les miens » et « Prédéfinis » : du plus court au plus long.
     let list = progs.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0));
-    if (S.filter === 'mine') list = list.filter(p => !p.sid);
-    if (S.filter === 'seed') list = list.filter(p => p.sid);
+    const byTime = (a, b) => a.minutes - b.minutes || a.name.localeCompare(b.name, 'fr');
+    if (S.filter === 'mine') list = list.filter(p => !p.sid).sort(byTime);
+    if (S.filter === 'seed') list = list.filter(p => p.sid).sort(byTime);
     const chip = (k, l) => `<button type="button" class="chip${S.filter === k ? ' on' : ''}" data-filter="${k}">${l}</button>`;
     return `<header class="hd"><h1>Programmes</h1><span class="sub">${progs.length} programme${progs.length > 1 ? 's' : ''} · calculés pour ${fp(settings.weight)} kg</span></header>
       <div class="scroll">
@@ -493,7 +503,7 @@ select.txt{appearance:auto}
   function cardHtml(p){
     const c = compute(p), k = kindOf(p);
     const badge = k === 'auto' ? '<span class="badge mine">Auto</span>' : k === 'user' ? '<span class="badge mine">Perso</span>' : '';
-    return `<button type="button" class="card pcard" data-open="${p.id}"><span class="nm">${esc(p.name)}${badge}</span>${miniSvg(p.segs)}<span class="m">${f0.format(p.minutes)} min · ${f2.format(c.dist)} km · ${f0.format(c.kcal)} kcal</span></button>`;
+    return `<div class="swr" data-swr="${p.id}"><button type="button" class="swdel" data-swdel="${p.id}" tabindex="-1">Supprimer</button><button type="button" class="card pcard" data-open="${p.id}"><span class="nm">${esc(p.name)}${badge}</span>${miniSvg(p.segs)}<span class="m">${f0.format(p.minutes)} min · ${f2.format(c.dist)} km · ${f0.format(c.kcal)} kcal</span></button></div>`;
   }
 
   /* ===================== Vue : Fiche ===================== */
@@ -760,6 +770,83 @@ select.txt{appearance:auto}
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('sheet').hidden) closeSheet(); });
   let toastT;
   function toast(t){ const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 2400); }
+  // Message avec un bouton « Annuler » (5 s)
+  function toastUndo(t, onUndo){
+    const el = $('toast');
+    el.innerHTML = `<span>${esc(t)}</span><button type="button" class="undo">Annuler</button>`;
+    el.hidden = false; clearTimeout(toastT);
+    el.querySelector('.undo').onclick = () => { clearTimeout(toastT); el.hidden = true; onUndo(); };
+    toastT = setTimeout(() => el.hidden = true, 5000);
+  }
+
+  /* ===================== Glisser vers la gauche pour supprimer ===================== */
+  const SW_OPEN = 100;
+  let sw = null, swOpenId = null, swJustDragged = false;
+  function swSet(row, x, anim = true){
+    const c = row.querySelector('.pcard'); row.classList.toggle('drag', !anim);
+    c.style.transform = x ? `translateX(${x}px)` : '';
+    clearTimeout(row._hideT);
+    if (x) row.classList.add('reveal');
+    else row._hideT = setTimeout(() => row.classList.remove('reveal'), 220);   // après l'animation de fermeture
+  }
+  function swCloseAll(except){
+    document.querySelectorAll('.swr').forEach(r => { if (r !== except) swSet(r, 0); });
+    if (!except) swOpenId = null;
+  }
+  function deleteWithUndo(id){
+    const i = progs.findIndex(p => p.id === id); if (i < 0) return;
+    const [p] = progs.splice(i, 1), wasLast = lastId === id;
+    if (wasLast){ lastId = null; ls.set(KEY + '.last', null); }
+    saveProgs(); swOpenId = null;
+    const row = document.querySelector(`.swr[data-swr="${id}"]`);
+    const done = () => render();
+    if (row){ row.style.transition = 'opacity .18s, max-height .22s'; row.style.maxHeight = row.offsetHeight + 'px'; requestAnimationFrame(() => { row.style.opacity = '0'; row.style.maxHeight = '0px'; }); setTimeout(done, 230); } else done();
+    toastUndo(`« ${p.name} » supprimé`, () => {
+      progs.splice(Math.min(i, progs.length), 0, p);
+      if (wasLast){ lastId = id; ls.set(KEY + '.last', id); }
+      saveProgs(); render(); toast('Programme restauré');
+    });
+  }
+  document.addEventListener('pointerdown', e => {
+    const card = e.target.closest('.swr .pcard'); if (!card) { if (swOpenId && !e.target.closest('.swdel')) swCloseAll(); return; }
+    const row = card.parentElement;
+    if (swOpenId && swOpenId !== row.dataset.swr) swCloseAll();
+    sw = { row, id: row.dataset.swr, x0: e.clientX, y0: e.clientY, base: swOpenId === row.dataset.swr ? -SW_OPEN : 0, dx: 0, on: false, pid: e.pointerId };
+  });
+  document.addEventListener('pointermove', e => {
+    if (!sw || e.pointerId !== sw.pid) return;
+    const dx = e.clientX - sw.x0, dy = e.clientY - sw.y0;
+    if (!sw.on){
+      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)){ sw = null; return; }   // défilement vertical
+      if (Math.abs(dx) < 10) return;
+      sw.on = true;
+      try { sw.row.querySelector('.pcard').setPointerCapture(e.pointerId); } catch(err){}
+    }
+    sw.dx = dx;
+    const w = sw.row.offsetWidth;
+    let x = Math.min(0, sw.base + dx);
+    if (x < -SW_OPEN) x = -SW_OPEN - (-x - SW_OPEN) * .6;   // résistance au-delà du bouton
+    swSet(sw.row, Math.max(x, -w), false);
+  });
+  function swEnd(e){
+    if (!sw || (e && e.pointerId !== sw.pid)) return;
+    const s = sw; sw = null;
+    if (!s.on) return;
+    swJustDragged = true; setTimeout(() => swJustDragged = false, 50);
+    const x = s.base + s.dx, w = s.row.offsetWidth;
+    if (x < -w * .6){ swSet(s.row, -w); deleteWithUndo(s.id); return; }   // glissé jusqu'au bout : suppression directe
+    if (x < -SW_OPEN / 2){ swSet(s.row, -SW_OPEN); swOpenId = s.id; }
+    else { swSet(s.row, 0); if (swOpenId === s.id) swOpenId = null; }
+  }
+  document.addEventListener('pointerup', swEnd);
+  document.addEventListener('pointercancel', swEnd);
+  // Après un glissement, le « clic » final n'ouvre pas la fiche ; un appui sur une carte ouverte la referme.
+  document.addEventListener('click', e => {
+    const del = e.target.closest('[data-swdel]');
+    if (del){ e.stopPropagation(); deleteWithUndo(del.dataset.swdel); return; }
+    const card = e.target.closest('.swr .pcard');
+    if (card && (swJustDragged || swOpenId)){ e.stopPropagation(); e.preventDefault(); if (!swJustDragged) swCloseAll(); }
+  }, true);
 
   function pickSheet(onPick, currentId){
     openSheet(`<h3>Choisir un programme</h3><div class="pick">${progs.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0)).map(p => {

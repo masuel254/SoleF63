@@ -8,7 +8,7 @@ Chaque programme est découpé en **18 paliers de durée égale** (1/18 du temps
 
 Quatre onglets en bas de l'écran :
 
-- **Programmes** : liste filtrable (tous, les miens, prédéfinis) ; un appui ouvre la fiche (profil, chiffres clés, Lancer, Modifier, Dupliquer, Renommer, Supprimer, détail des 18 paliers).
+- **Programmes** : liste filtrable (tous : les plus récents en haut ; les miens et prédéfinis : du plus court au plus long). Glisser une carte vers la gauche pour la supprimer (bouton Annuler pendant 5 s). Un appui ouvre la fiche (profil, chiffres clés, Lancer, Modifier, Dupliquer, Renommer, Supprimer, détail des 18 paliers).
 - **Créer** : automatique (temps total, kcal visées, marche ou course, forme) ou manuel (profil plat ou copie). Rien n'est enregistré avant d'appuyer sur **Enregistrer** ; on peut aussi ajuster les paliers avant, ou lancer la séance sans enregistrer.
 - **Séance** : reprend le dernier programme lancé. Séance plein écran : décompte par palier, consignes en grand, bips et voix, écran maintenu allumé, bilan à la fin.
 - **Réglages** : poids (unique pour tous les programmes), vitesse max en marche et en course (plafonds de la création automatique), sons, export / import, version.
