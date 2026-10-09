@@ -4,7 +4,7 @@
 // sur les téléphones et elle s'affiche en bas de la liste des programmes.
 // Elle doit changer à chaque envoi sur GitHub (date et heure de Paris),
 // sinon les téléphones gardent l'ancienne version.
-const VERSION = '2026-10-09 15:46';
+const VERSION = '2026-10-09 15:59';
 const CACHE = 'sole-f63-' + VERSION.replace(/\D/g, '');
 const CORE = [
   './',

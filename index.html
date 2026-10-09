@@ -502,11 +502,11 @@ select.txt{appearance:auto}
   /* ===================== Vue : Programmes ===================== */
   function viewList(){
     const mine = progs.filter(p => !p.sid).length, seeds = progs.length - mine;
-    // « Tous » : les plus récents en haut. « Les miens » et « Prédéfinis » : du plus court au plus long.
-    let list = progs.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0));
+    // Tous les filtres : du plus court au plus long, puis par nom à durée égale.
     const byTime = (a, b) => a.minutes - b.minutes || a.name.localeCompare(b.name, 'fr');
-    if (S.filter === 'mine') list = list.filter(p => !p.sid).sort(byTime);
-    if (S.filter === 'seed') list = list.filter(p => p.sid).sort(byTime);
+    let list = progs.slice().sort(byTime);
+    if (S.filter === 'mine') list = list.filter(p => !p.sid);
+    if (S.filter === 'seed') list = list.filter(p => p.sid);
     const chip = (k, l) => `<button type="button" class="chip${S.filter === k ? ' on' : ''}" data-filter="${k}">${l}</button>`;
     return `<header class="hd"><h1>Programmes</h1><span class="sub">${progs.length} programme${progs.length > 1 ? 's' : ''} · calculés pour ${fp(settings.weight)} kg</span></header>
       <div class="scroll">
