@@ -83,7 +83,9 @@ input,select,textarea{font:inherit;color:inherit;font-size:max(16px,1em)}
 .pcard:active{background:var(--surface-2)}
 .pcard .nm{font-weight:600;font-size:16.5px;line-height:1.25;overflow-wrap:anywhere}
 .pcard .m{color:var(--muted);font-size:13.5px;grid-column:1}
-.pcard svg{grid-row:1 / span 2;grid-column:2;width:92px;height:36px}
+.pcard svg{grid-row:1 / span 3;grid-column:2;width:92px;height:36px}
+.m.avg{font-size:13px}
+.m.avg .vs{color:var(--speed);font-weight:600} .m.avg .ps{color:var(--grade);font-weight:600}
 .badge{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 6px;border-radius:5px;margin-left:6px;vertical-align:2px;background:var(--surface-2);color:var(--muted)}
 .badge.mine{background:var(--speed-soft);color:var(--speed)}
 .state{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px;white-space:nowrap}
@@ -192,7 +194,7 @@ select.txt{appearance:auto}
 .sh .pick{display:flex;flex-direction:column}
 .sh .pick button{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:2px 12px;text-align:left;padding:10px 4px;border-top:1px solid var(--line);align-items:center}
 .sh .pick button:first-child{border-top:0}
-.sh .pick svg{grid-row:1 / span 2;grid-column:2;width:92px;height:34px}
+.sh .pick svg{grid-row:1 / span 3;grid-column:2;width:92px;height:34px}
 .sh .pick .m{color:var(--muted);font-size:13.5px}
 .sh .pick button[aria-current="true"] .nm{color:var(--speed)}
 
@@ -516,10 +518,11 @@ select.txt{appearance:auto}
       </div>
       <button type="button" class="fab" data-act="new">${ICON.plus}Nouveau programme</button>`;
   }
+  const avgLine = c => `<span class="m avg"><span class="vs">Vmoy. ${f1.format(c.avgV)} km/h</span> · <span class="ps">Pmoy. ${f1.format(c.avgP)} %</span></span>`;
   function cardHtml(p){
     const c = compute(p), k = kindOf(p);
     const badge = k === 'auto' ? '<span class="badge mine">Auto</span>' : k === 'user' ? '<span class="badge mine">Perso</span>' : '';
-    return `<div class="swr" data-swr="${p.id}"><button type="button" class="swdel" data-swdel="${p.id}" tabindex="-1">Supprimer</button><button type="button" class="card pcard" data-open="${p.id}"><span class="nm">${esc(p.name)}${badge}</span>${miniSvg(p.segs)}<span class="m">${f0.format(p.minutes)} min · ${f2.format(c.dist)} km · ${f0.format(c.kcal)} kcal</span></button></div>`;
+    return `<div class="swr" data-swr="${p.id}"><button type="button" class="swdel" data-swdel="${p.id}" tabindex="-1">Supprimer</button><button type="button" class="card pcard" data-open="${p.id}"><span class="nm">${esc(p.name)}${badge}</span>${miniSvg(p.segs)}<span class="m">${f0.format(p.minutes)} min · ${f2.format(c.dist)} km · ${f0.format(c.kcal)} kcal</span>${avgLine(c)}</button></div>`;
   }
 
   /* ===================== Vue : Fiche ===================== */
@@ -876,7 +879,7 @@ select.txt{appearance:auto}
   function pickSheet(onPick, currentId){
     openSheet(`<h3>Choisir un programme</h3><div class="pick">${progs.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0)).map(p => {
       const c = compute(p);
-      return `<button type="button" data-pick="${p.id}" aria-current="${p.id === currentId}"><span class="nm" style="font-weight:600">${esc(p.name)}</span>${miniSvg(p.segs)}<span class="m">${f0.format(p.minutes)} min · ${f2.format(c.dist)} km · ${f0.format(c.kcal)} kcal</span></button>`;
+      return `<button type="button" data-pick="${p.id}" aria-current="${p.id === currentId}"><span class="nm" style="font-weight:600">${esc(p.name)}</span>${miniSvg(p.segs)}<span class="m">${f0.format(p.minutes)} min · ${f2.format(c.dist)} km · ${f0.format(c.kcal)} kcal</span>${avgLine(c)}</button>`;
     }).join('')}</div><button type="button" class="btn" data-act="sh-close">Annuler</button>`, m => {
       m.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { closeSheet(); onPick(b.dataset.pick); });
     });
