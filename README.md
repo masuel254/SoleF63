@@ -27,14 +27,10 @@ kcal                = (0,1 × v + 1,8 × v × pente/100 + 3,5) × poids / 200 ×
 
 C'est l'équation ACSM de la **marche**. Elle reste fiable jusqu'à 6-7 km/h ; en course (au-delà d'environ 8 km/h) elle sous-estime la dépense.
 
-## Mise en ligne sur GitHub Pages (une seule fois)
+## En ligne
 
-1. Sur github.com, créer un dépôt public, par exemple `sole-f63`.
-2. Bouton **Add file → Upload files**, glisser index.html, sw.js, manifest.webmanifest, README.md et le dossier icons, puis **Commit changes**.
-3. Ajouter le déploiement automatique : **Add file → Create new file**, nommer le fichier `.github/workflows/deploy.yml` (taper le nom en entier, les `/` créent les dossiers), coller le contenu du fichier `deploy.yml` fourni, puis **Commit changes**.
-   Le dossier `.github` est souvent masqué sur Mac et Windows, d'où cette étape à part.
-4. **Settings → Pages** : Source = **GitHub Actions**.
-5. Onglet **Actions** : le déploiement « Mise en ligne » tourne une à deux minutes. Ensuite l'appli est en ligne sur `https://<votre-compte>.github.io/sole-f63/`.
+L'appli est publiée par GitHub Pages depuis la branche `main` (Settings → Pages → *Deploy from a branch*, dossier racine) :
+**https://masuel254.github.io/SoleF63/**
 
 ## Installer sur le téléphone
 
@@ -43,16 +39,11 @@ C'est l'équation ACSM de la **marche**. Elle reste fiable jusqu'à 6-7 km/h ; e
 
 ## Mettre à jour le site
 
-Il suffit de remplacer les fichiers modifiés dans le dépôt (**Add file → Upload files**). Le déploiement automatique :
-
-1. inscrit la date et l'heure du jour dans la ligne `const VERSION` de `sw.js` ;
-2. publie le site.
+Chaque envoi sur `main` est publié en une à deux minutes. Avant chaque envoi, la ligne `const VERSION` de `sw.js` reçoit la date et l'heure du jour : c'est ce changement qui déclenche la mise à jour sur les téléphones. En cas d'envoi à la main (**Add file → Upload files**), penser à changer cette date.
 
 À la prochaine ouverture, l'appli détecte la nouvelle version, l'installe et se recharge toute seule (message « Appli mise à jour »). Elle vérifie aussi quand on la réaffiche après une mise en veille. Si une séance est en cours, la mise à jour attend la fin de la séance.
 
-La version en service s'affiche en petit en bas de la liste des programmes : « Version du 09/10/2026 à 13h35 ».
-
-Sans le déploiement automatique (Source = *Deploy from a branch*), il faut changer la date de la ligne `const VERSION` à la main avant chaque envoi.
+La version en service s'affiche en petit en bas de la liste des programmes : « Version du 09/10/2026 à 14h01 ».
 
 ## Données
 
@@ -64,4 +55,7 @@ Vitesse 0,8 à 18 km/h, pente 0 à 15 % (maximum du tapis). Modifiables en haut 
 
 Création automatique : vitesse max 5,8 km/h en marche et 11 km/h en course, pente jusqu'à 15 % dans les deux cas.
 
-Mode séance : 3 bips courts à 3, 2 et 1 seconde de chaque changement de palier, puis un bip long au changement.
+Mode séance : deux boutons indépendants, **Bips** et **Voix** (les deux, l'un, l'autre ou aucun, choix mémorisé).
+- Bips : 3 bips courts à 3, 2 et 1 seconde de chaque changement de palier, puis un bip long au changement.
+- Voix : annonce la nouvelle consigne au changement (« 3,8 kilomètres heure, pente 2 »), au départ et en fin de séance.
+- Voix seule : la voix compte aussi « trois, deux, un » à la place des bips.
