@@ -139,7 +139,7 @@ input,select,textarea{font:inherit;color:inherit;font-size:max(16px,1em)}
 select.txt{appearance:auto}
 .pv{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
 .pv svg{width:100%;height:auto;display:block}
-.pv-st{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.pv-st{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 6px}
 .pv-st div{display:flex;flex-direction:column;min-width:0}
 .pv-st span{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .pv-st b{font-family:var(--f-display);font-size:20px;line-height:1.1}
@@ -196,6 +196,21 @@ select.txt{appearance:auto}
 .sh .pick .m{color:var(--muted);font-size:13.5px}
 .sh .pick button[aria-current="true"] .nm{color:var(--speed)}
 
+/* Bibliothèque de sons */
+.snd-list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.snd-row{display:grid;grid-template-columns:minmax(0,1fr) 52px;align-items:stretch;border-top:1px solid var(--line)}
+.snd-row:first-child{border-top:0}
+.snd-row.on{background:var(--speed-soft)}
+.snd-pick{display:flex;align-items:center;gap:12px;text-align:left;padding:10px 12px;min-width:0}
+.snd-pick span{display:flex;flex-direction:column;min-width:0}
+.snd-pick b{font-weight:600;font-size:16px}
+.snd-pick small{color:var(--muted);font-size:13px;line-height:1.3}
+.radio{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid var(--line);position:relative}
+.snd-row.on .radio{border-color:var(--speed)}
+.snd-row.on .radio::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--speed)}
+.snd-play{display:grid;place-items:center;color:var(--speed);border-left:1px solid var(--line)}
+.snd-play svg{width:18px;height:18px}
+.snd-play:active{background:var(--surface-2)}
 /* Réglages */
 .sw{width:50px;height:30px;border-radius:15px;background:var(--line);position:relative;flex:none;transition:background .15s}
 .sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s}
@@ -327,7 +342,7 @@ select.txt{appearance:auto}
   function saveProgs(){ clearTimeout(saveT); if (!ls.set(KEY, progs)) toast('Stockage indisponible : les changements seront perdus à la fermeture'); }
 
   // Réglages globaux (poids unique, vitesses max, sons). Migration depuis l'ancienne version.
-  const settings = Object.assign({ weight: null, walkMax: 5.8, runMax: 11, beep: true, voice: false }, ls.get(KEY + '.settings', {}));
+  const settings = Object.assign({ weight: null, walkMax: 5.8, runMax: 11, beep: true, voice: false, sound: 'doux' }, ls.get(KEY + '.settings', {}));
   if (settings.weight == null){
     settings.weight = (progs.find(p => p.weight) || {}).weight || 120;
     Object.assign(settings, ls.get(KEY + '.sound', {}));
@@ -352,6 +367,7 @@ select.txt{appearance:auto}
     return {
       segMin, rows, dist: dc, kcal: kc,
       avgP: p.segs.reduce((a, s) => a + s.p, 0) / N,
+      avgV: p.segs.reduce((a, s) => a + s.v, 0) / N,   // paliers de même durée : moyenne simple = moyenne dans le temps
       vMax: Math.max(...p.segs.map(s => s.v)), pMax: Math.max(...p.segs.map(s => s.p))
     };
   }
@@ -521,7 +537,9 @@ select.txt{appearance:auto}
         <div class="kpis">
           <div class="kpi"><span>Durée</span><b>${f0.format(p.minutes)}<small>min</small></b></div>
           <div class="kpi"><span>Distance</span><b>${f2.format(c.dist)}<small>km</small></b></div>
+          <div class="kpi s"><span>Vitesse moy.</span><b>${f1.format(c.avgV)}<small>km/h</small></b></div>
           <div class="kpi s"><span>Vitesse max</span><b>${f1.format(c.vMax)}<small>km/h</small></b></div>
+          <div class="kpi g"><span>Pente moy.</span><b>${f1.format(c.avgP)}<small>%</small></b></div>
           <div class="kpi g"><span>Pente max</span><b>${fp(c.pMax)}<small>%</small></b></div>
         </div>
         <div class="small center">${f0.format(c.kcal)} kcal pour ${fp(settings.weight)} kg · 18 paliers de ${durTxt(c.segMin)}</div>
@@ -558,8 +576,12 @@ select.txt{appearance:auto}
         <div class="card pv">
           <div id="pv-chart"></div>
           <div class="pv-st">
-            <div><span>Dépense</span><b id="pv-k"></b></div><div><span>km</span><b id="pv-d"></b></div>
-            <div><span>V. max</span><b id="pv-v" style="color:var(--speed)"></b></div><div><span>Pente max</span><b id="pv-p" style="color:var(--grade)"></b></div>
+            <div><span>Dépense</span><b id="pv-k"></b></div>
+            <div><span>V. moy.</span><b id="pv-va" style="color:var(--speed)"></b></div>
+            <div><span>Pente moy.</span><b id="pv-pa" style="color:var(--grade)"></b></div>
+            <div><span>Distance</span><b id="pv-d"></b></div>
+            <div><span>V. max</span><b id="pv-v" style="color:var(--speed)"></b></div>
+            <div><span>Pente max</span><b id="pv-p" style="color:var(--grade)"></b></div>
           </div>
           <div class="status-line" id="pv-st"></div>
         </div>
@@ -595,7 +617,9 @@ select.txt{appearance:auto}
     const cc = compute({ minutes: c.minutes, segs: res.segs });
     $('pv-chart').innerHTML = profileSvg(res.segs, { W: 340, H: 96, dots: true, lw: 2 });
     $('pv-k').textContent = f0.format(res.kcal);
-    $('pv-d').textContent = f2.format(cc.dist);
+    $('pv-d').textContent = f2.format(cc.dist) + ' km';
+    $('pv-va').textContent = f1.format(cc.avgV);
+    $('pv-pa').textContent = f1.format(cc.avgP) + ' %';
     $('pv-v').textContent = f1.format(cc.vMax);
     $('pv-p').textContent = fp(cc.pMax) + ' %';
     const st = $('pv-st'), lab = modeCfg(c.type).label.toLowerCase();
@@ -653,7 +677,7 @@ select.txt{appearance:auto}
     const e = S.edit, d = e.draft, c = compute(d);
     c.rows.forEach((r, i) => { const t = $('e-t' + i); if (t) t.textContent = mmss(r.end); });
     $('e-chart').innerHTML = profileSvg(d.segs, { W: 340, H: 96, dots: true, lw: 2, hl: e.hl });
-    $('e-tot').innerHTML = `<b>${f2.format(c.dist)}</b> km · <b>${f0.format(c.kcal)}</b> kcal · pente moy. <b>${f1.format(c.avgP)}</b> %`;
+    $('e-tot').innerHTML = `<b>${f2.format(c.dist)}</b> km · <b>${f0.format(c.kcal)}</b> kcal · moy. <b>${f1.format(c.avgV)}</b> km/h · <b>${f1.format(c.avgP)}</b> %`;
     $('st-emin').innerHTML = `${d.minutes}<small>min</small>`;
     $('e-seg').textContent = `paliers de ${durTxt(c.segMin)}`;
     $('e-title').textContent = d.name.trim() || 'Sans nom';
@@ -716,7 +740,7 @@ select.txt{appearance:auto}
         <div class="card sess">
           <span class="nm">${esc(p.name)}</span>
           ${profileSvg(p.segs, { W: 340, H: 110, minutes: p.minutes, dots: true, lw: 2 })}
-          <span class="small">${f0.format(p.minutes)} min · ${f2.format(c.dist)} km · ${f0.format(c.kcal)} kcal · max ${f1.format(c.vMax)} km/h et ${fp(c.pMax)} %</span>
+          <span class="small">${f0.format(p.minutes)} min · ${f2.format(c.dist)} km · ${f0.format(c.kcal)} kcal · vitesse moy. ${f1.format(c.avgV)} (max ${f1.format(c.vMax)}) km/h · pente moy. ${f1.format(c.avgP)} (max ${fp(c.pMax)}) %</span>
         </div>
         <button type="button" class="btn pri" data-act="s-run" data-id="${p.id}">${ICON.play}Démarrer</button>
         <button type="button" class="btn sm" data-act="s-pick">Choisir un autre programme</button>
@@ -743,7 +767,8 @@ select.txt{appearance:auto}
         <div class="card">
           ${sw('beep', 'Bips avant chaque palier')}
           ${sw('voice', 'Voix (consignes annoncées)')}
-          <div class="field"><span class="lab">Tester les sons</span><button type="button" class="lnk" data-act="test-snd">Écouter</button></div>
+          <button type="button" class="field" data-act="snd-lib" style="width:100%;text-align:left"><span class="lab">Son des bips<small>15 sons au choix</small></span><span class="val" style="display:flex;align-items:center;gap:6px"><span id="snd-name">${esc(soundById(settings.sound).name)}</span><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l5 5-5 5"/></svg></span></button>
+          <div class="field"><span class="lab">Tester bips et voix</span><button type="button" class="lnk" data-act="test-snd">Écouter</button></div>
         </div>
         <span class="grp-t" style="margin-top:8px">Sauvegarde</span>
         <div class="card">
@@ -923,6 +948,7 @@ select.txt{appearance:auto}
       case 's-run': { const q = byId(t.dataset.id); if (q) startRun(q); break; }
       case 's-pick': pickSheet(id => { lastId = id; ls.set(KEY + '.last', id); render(); }, lastId); break;
       case 'test-snd': testSounds(); break;
+      case 'snd-lib': soundSheet(); break;
       case 'export': exportProgs(); break;
       case 'import': $('fileImport').click(); break;
     }
@@ -1020,19 +1046,119 @@ select.txt{appearance:auto}
     if (audio.ctx.state === 'suspended') audio.ctx.resume();
     return audio;
   }
-  // Bip doux au volume 100 % : court pour le décompte, long et plus aigu au changement.
-  function beep(freq = 880, dur = .14, delay = 0){
-    try {
-      const { ctx, master } = audioOut();
-      const t = ctx.currentTime + .01 + delay, o = ctx.createOscillator(), g = ctx.createGain(), vol = .45;
-      o.type = 'sine'; o.frequency.value = freq;
-      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .005);
-      g.gain.setValueAtTime(vol, t + dur - .03); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
-      o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .02);
-    } catch(e){}
+  /* Briques de synthèse : tout est généré par le navigateur, aucun fichier audio à télécharger. */
+  // Son tenu (bip) : montée rapide, plateau, coupure nette
+  function tone(t, { f, dur = .15, type = 'sine', vol = .45, to = null, vib = 0, vibRate = 0 }){
+    const { ctx, master } = audio, o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+    if (vib){ const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = vibRate; lg.gain.value = vib; l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(t + dur + .05); }
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .005);
+    g.gain.setValueAtTime(vol, t + Math.max(.006, dur - .03)); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .02);
   }
-  const beepCount = (d = 0) => beep(880, .14, d);
-  const beepChange = (d = 0) => beep(1320, .5, d);
+  // Son percuté (cloche, bois, goutte) : attaque franche puis décroissance
+  function strike(t, { f, dur = .6, type = 'sine', vol = .5, to = null, partials = [[1, 1]] }){
+    const { ctx, master } = audio;
+    partials.forEach(([r, a], k) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type; o.frequency.setValueAtTime(f * r, t);
+      if (to) o.frequency.exponentialRampToValueAtTime(to * r, t + dur * .6);
+      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol * a, t + .003);
+      g.gain.exponentialRampToValueAtTime(.0001, t + dur / (1 + k * .5));
+      o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .05);
+    });
+  }
+  let noiseBuf = null;
+  function hiss(t, { dur = .2, vol = .2, f = 2800 }){
+    const { ctx, master } = audio;
+    if (!noiseBuf){ noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+    const s = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
+    s.buffer = noiseBuf; bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = 3;
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    s.connect(bp); bp.connect(g); g.connect(master); s.start(t); s.stop(t + dur + .05);
+  }
+  const BELL = [[1, 1], [2.76, .55], [5.4, .35], [8.93, .2]];
+  const WOOD = [[1, 1], [3.9, .35], [9.2, .12]];
+
+  /* Bibliothèque : count = décompte (3, 2, 1), change = changement de palier */
+  const SOUNDS = [
+    { id: 'doux', name: 'Bip doux', desc: 'Bip pur, aigu au changement (son d’origine)',
+      count: t => tone(t, { f: 880, dur: .14 }), change: t => tone(t, { f: 1320, dur: .5 }) },
+    { id: 'montre', name: 'Montre sport', desc: 'Double bip carré très perçant',
+      count: t => { tone(t, { f: 2400, dur: .07, type: 'square', vol: .32 }); tone(t + .1, { f: 2400, dur: .07, type: 'square', vol: .32 }); },
+      change: t => { [0, .12, .24].forEach(d => tone(t + d, { f: 2900, dur: .09, type: 'square', vol: .34 })); tone(t + .38, { f: 2900, dur: .4, type: 'square', vol: .34 }); } },
+    { id: 'electro', name: 'Bip électronique', desc: 'Chrono de salle, net et présent',
+      count: t => tone(t, { f: 1000, dur: .16, type: 'square', vol: .32 }),
+      change: t => { tone(t, { f: 1500, dur: .18, type: 'square', vol: .34 }); tone(t + .24, { f: 1500, dur: .45, type: 'square', vol: .34 }); } },
+    { id: 'sifflet', name: 'Sifflet de coach', desc: 'Sifflet à roulette, le plus perçant',
+      count: t => { tone(t, { f: 2950, dur: .16, vol: .42, vib: 140, vibRate: 32 }); hiss(t, { dur: .16, vol: .18 }); },
+      change: t => { tone(t, { f: 2950, dur: .7, vol: .45, vib: 160, vibRate: 30 }); hiss(t, { dur: .7, vol: .2 }); } },
+    { id: 'ring', name: 'Cloche de ring', desc: 'Ding au décompte, double coup de cloche',
+      count: t => strike(t, { f: 1250, dur: .45, partials: BELL }),
+      change: t => { strike(t, { f: 720, dur: 1.5, vol: .7, partials: BELL }); strike(t + .35, { f: 720, dur: 1.5, vol: .7, partials: BELL }); } },
+    { id: 'buzzer', name: 'Buzzer de salle', desc: 'Rauque et brutal, fin de quart-temps',
+      count: t => { tone(t, { f: 440, dur: .14, type: 'sawtooth', vol: .26 }); tone(t, { f: 466, dur: .14, type: 'sawtooth', vol: .22 }); },
+      change: t => { [220, 233, 330].forEach(f => tone(t, { f, dur: .75, type: 'sawtooth', vol: .2 })); tone(t, { f: 110, dur: .75, type: 'square', vol: .16 }); } },
+    { id: 'alarme', name: 'Alarme montante', desc: 'Glissés vers l’aigu, accrocheur',
+      count: t => tone(t, { f: 1300, to: 2100, dur: .16, type: 'triangle', vol: .5 }),
+      change: t => tone(t, { f: 700, to: 2600, dur: .6, type: 'square', vol: .3 }) },
+    { id: 'carillon', name: 'Carillon', desc: 'Ding aigu, puis ding-dong au changement',
+      count: t => strike(t, { f: 1568, dur: .5, partials: [[1, 1], [2, .3]] }),
+      change: t => { strike(t, { f: 1319, dur: 1.1, vol: .6, partials: [[1, 1], [2, .3]] }); strike(t + .38, { f: 1047, dur: 1.3, vol: .6, partials: [[1, 1], [2, .3]] }); } },
+    { id: 'triangle', name: 'Triangle', desc: 'Tintement métallique qui résonne',
+      count: t => strike(t, { f: 3136, dur: .6, vol: .4, partials: [[1, 1], [1.5, .3], [2.7, .2]] }),
+      change: t => { [0, .09, .18, .27].forEach(d => strike(t + d, { f: 3136, dur: 1.2, vol: .38, partials: [[1, 1], [1.5, .3], [2.7, .2]] })); } },
+    { id: 'marimba', name: 'Marimba', desc: 'Note boisée, arpège montant au changement',
+      count: t => strike(t, { f: 784, dur: .35, vol: .7, partials: WOOD }),
+      change: t => { [523, 659, 784, 1047].forEach((f, k) => strike(t + k * .09, { f, dur: .5, vol: .7, partials: WOOD })); } },
+    { id: 'goutte', name: 'Goutte d’eau', desc: 'Petit « bloop » rond et discret',
+      count: t => strike(t, { f: 1500, to: 600, dur: .22, vol: .7 }),
+      change: t => { strike(t, { f: 1500, to: 600, dur: .22, vol: .7 }); strike(t + .16, { f: 1900, to: 750, dur: .3, vol: .7 }); } },
+    { id: 'arcade', name: 'Arcade', desc: 'Bip de jeu vidéo rétro',
+      count: t => tone(t, { f: 988, dur: .09, type: 'square', vol: .28 }),
+      change: t => { [988, 1319, 1976].forEach((f, k) => tone(t + k * .08, { f, dur: k === 2 ? .35 : .08, type: 'square', vol: .28 })); } },
+    { id: 'depart', name: 'Feux de départ', desc: 'Trois bips graves puis un aigu, comme en F1',
+      count: t => tone(t, { f: 660, dur: .3, type: 'triangle', vol: .6 }),
+      change: t => tone(t, { f: 1320, dur: .8, type: 'triangle', vol: .6 }) },
+    { id: 'klaxon', name: 'Klaxon', desc: 'Coups de trompe, impossible à rater',
+      count: t => { tone(t, { f: 392, dur: .13, type: 'sawtooth', vol: .22 }); tone(t, { f: 494, dur: .13, type: 'sawtooth', vol: .2 }); },
+      change: t => { [0, .22].forEach(d => { tone(t + d, { f: 392, dur: d ? .45 : .15, type: 'sawtooth', vol: .22 }); tone(t + d, { f: 494, dur: d ? .45 : .15, type: 'sawtooth', vol: .2 }); }); } },
+    { id: 'sonar', name: 'Sonar', desc: 'Ping avec écho, ambiance sous-marin',
+      count: t => { strike(t, { f: 1200, dur: .5, vol: .55 }); strike(t + .18, { f: 1200, dur: .4, vol: .18 }); },
+      change: t => { strike(t, { f: 1500, dur: 1.2, vol: .6 }); [.25, .5, .75].forEach((d, k) => strike(t + d, { f: 1500, dur: .8, vol: .3 / (k + 1) })); } }
+  ];
+  const soundById = id => SOUNDS.find(s => s.id === id) || SOUNDS[0];
+  if (!SOUNDS.some(s => s.id === settings.sound)){ settings.sound = 'doux'; saveSettings(); }
+  function playSnd(kind, delay = 0, id = settings.sound){
+    try { const { ctx } = audioOut(); soundById(id)[kind](ctx.currentTime + .02 + delay); } catch(e){}
+  }
+  const beepCount = (d = 0) => playSnd('count', d);
+  const beepChange = (d = 0) => playSnd('change', d);
+  // Aperçu rapide d'un son : 3 décomptes rapprochés puis le changement
+  function previewSnd(id){ [0, .55, 1.1].forEach(d => playSnd('count', d, id)); playSnd('change', 1.65, id); }
+
+  function soundSheet(){
+    const row = s => `<div class="snd-row${s.id === settings.sound ? ' on' : ''}" data-row-snd="${s.id}">
+        <button type="button" class="snd-pick" data-pick-snd="${s.id}" role="radio" aria-checked="${s.id === settings.sound}"><i class="radio"></i><span><b>${esc(s.name)}</b><small>${esc(s.desc)}</small></span></button>
+        <button type="button" class="snd-play" data-play-snd="${s.id}" aria-label="Écouter ${esc(s.name)}">${ICON.play}</button>
+      </div>`;
+    openSheet(`<h3>Son des bips</h3><p>Appuyez sur ▶ pour écouter, sur le nom pour le choisir. Le choix est enregistré tout de suite.</p>
+      <div class="snd-list" role="radiogroup">${SOUNDS.map(row).join('')}</div>
+      <button type="button" class="btn pri" data-act="sh-close">Terminé</button>`, m => {
+      m.addEventListener('click', e => {
+        const pl = e.target.closest('[data-play-snd]');
+        if (pl){ previewSnd(pl.dataset.playSnd); return; }
+        const pk = e.target.closest('[data-pick-snd]');
+        if (pk){
+          settings.sound = pk.dataset.pickSnd; saveSettings();
+          m.querySelectorAll('[data-row-snd]').forEach(r => { const on = r.dataset.rowSnd === settings.sound; r.classList.toggle('on', on); r.querySelector('[role="radio"]').setAttribute('aria-checked', on); });
+          previewSnd(settings.sound);
+          const v = $('snd-name'); if (v) v.textContent = soundById(settings.sound).name;
+        }
+      });
+    });
+  }
   let frVoice = null;
   function pickVoice(){ try { frVoice = speechSynthesis.getVoices().find(v => /^fr(-|_|$)/i.test(v.lang)) || null; } catch(e){} }
   try { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; } catch(e){}
