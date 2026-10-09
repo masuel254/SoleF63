@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Sole F63 Programmes</title>
-<meta name="description" content="Créez et enregistrez vos programmes de marche en 18 paliers pour le tapis Sole F63 : distance, kcal, profil vitesse et pente, mode séance.">
+<meta name="description" content="Créez, enregistrez et suivez vos programmes de marche et de course en 18 paliers pour le tapis Sole F63.">
 <meta name="theme-color" content="#E9EDF1" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0A0E13" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -16,958 +16,916 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
 <style>
-/* Base (remplace le gabarit de l'hébergeur d'aperçu) */
-:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-body{margin:0}
-img{max-width:100%}
-[hidden]{display:none!important}
-/* Layout: console de tapis. Bibliothèque à gauche, éditeur à droite (paramètres, indicateurs, graphique, 18 segments). Sur mobile, la bibliothèque devient une bande horizontale. */
+/* Coquille d'application (même principe que l'appli nutrition) :
+   le document ne défile JAMAIS. Seule la zone .scroll défile, la barre d'onglets est
+   un élément normal en bas d'une colonne flex. Tous les champs font 16 px minimum,
+   sinon iPhone zoome à la saisie et l'écran se décale sur le côté. */
 :root{
-  --bg:#E9EDF1; --surface:#FFFFFF; --surface-2:#F4F6F8; --ink:#101822; --muted:#5A6676; --line:#D6DDE4;
-  --speed:#1F57D6; --speed-soft:rgba(31,87,214,.14); --grade:#D9730D; --grade-soft:rgba(217,115,13,.14);
-  --danger:#C2362B; --ok:#1E8A55;
+  --bg:#E9EDF1; --surface:#FFFFFF; --surface-2:#F3F5F7; --ink:#101822; --muted:#5A6676; --line:#D6DDE4;
+  --speed:#1F57D6; --speed-soft:rgba(31,87,214,.12); --grade:#D9730D; --grade-soft:rgba(217,115,13,.13);
+  --ok:#1E8A55; --ok-soft:rgba(30,138,85,.12); --warn:#B4520B; --danger:#C2362B; --scrim:rgba(5,9,14,.5);
   --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
   --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --r:10px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0A0E13; --surface:#121921; --surface-2:#18212B; --ink:#E6ECF2; --muted:#8996A5; --line:#232E3A;
-  --speed:#5B93FF; --speed-soft:rgba(91,147,255,.16); --grade:#FFAA2B; --grade-soft:rgba(255,170,43,.16);
-  --danger:#FF6B5E; --ok:#3DCB82; color-scheme:dark }}
+  --bg:#0A0E13; --surface:#121921; --surface-2:#18212B; --ink:#E6ECF2; --muted:#8996A5; --line:#25303C;
+  --speed:#5B93FF; --speed-soft:rgba(91,147,255,.16); --grade:#FFAA2B; --grade-soft:rgba(255,170,43,.15);
+  --ok:#3DCB82; --ok-soft:rgba(61,203,130,.14); --warn:#FFB35C; --danger:#FF6B5E; --scrim:rgba(0,0,0,.6); color-scheme:dark }}
 :root[data-theme="dark"]{
-  --bg:#0A0E13; --surface:#121921; --surface-2:#18212B; --ink:#E6ECF2; --muted:#8996A5; --line:#232E3A;
-  --speed:#5B93FF; --speed-soft:rgba(91,147,255,.16); --grade:#FFAA2B; --grade-soft:rgba(255,170,43,.16);
-  --danger:#FF6B5E; --ok:#3DCB82; color-scheme:dark }
+  --bg:#0A0E13; --surface:#121921; --surface-2:#18212B; --ink:#E6ECF2; --muted:#8996A5; --line:#25303C;
+  --speed:#5B93FF; --speed-soft:rgba(91,147,255,.16); --grade:#FFAA2B; --grade-soft:rgba(255,170,43,.15);
+  --ok:#3DCB82; --ok-soft:rgba(61,203,130,.14); --warn:#FFB35C; --danger:#FF6B5E; --scrim:rgba(0,0,0,.6); color-scheme:dark }
 
 *{box-sizing:border-box}
-html,body{height:100%}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;font-variant-numeric:tabular-nums}
-button,input{font:inherit;color:inherit}
-button{cursor:pointer}
-:focus-visible{outline:2px solid var(--speed);outline-offset:2px}
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer;touch-action:manipulation}
+input,select,textarea{font:inherit;color:inherit;font-size:max(16px,1em)}
+:focus-visible{outline:2px solid var(--speed);outline-offset:2px;border-radius:4px}
 
-.app{display:grid;grid-template-columns:290px minmax(0,1fr);min-height:100%}
-/* ---------- Bibliothèque ---------- */
-.lib{border-right:1px solid var(--line);background:var(--surface);padding-block:20px;padding-inline:16px;display:flex;flex-direction:column;gap:16px;position:sticky;top:env(safe-area-inset-top,0px);height:100vh;overflow:auto}
-.brand{display:flex;align-items:center;gap:10px}
-.brand-mark{width:34px;height:34px;border-radius:8px;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:15px;letter-spacing:.02em}
-.brand h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:21px;letter-spacing:.01em;line-height:1}
-.brand small{display:block;color:var(--muted);font-size:12px;letter-spacing:.06em;text-transform:uppercase;margin-top:3px}
-.lib-head{display:flex;align-items:center;justify-content:space-between}
-.eyebrow{font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
-.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-.btn:hover{background:var(--surface-2)}
-.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.btn.primary:hover{opacity:.9}
-.btn.go{background:var(--speed);border-color:var(--speed);color:#fff}
+#app{position:relative;display:flex;flex-direction:column;width:100%;max-width:600px;height:100%;margin:0 auto;overflow:hidden;background:var(--bg);padding-top:env(safe-area-inset-top,0px)}
+@media (min-width:640px){ body{background:var(--surface-2)} #app{border-inline:1px solid var(--line)} }
+#view{position:relative;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding:0 16px 20px;display:flex;flex-direction:column;gap:12px}
+.scroll > *{min-width:0;flex:none}
+
+/* En-têtes */
+.hd{flex:none;padding:12px 18px 10px;display:flex;flex-direction:column;gap:3px}
+.hd h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:31px;line-height:1.05;text-wrap:balance;overflow-wrap:anywhere}
+.hd .sub{color:var(--muted);font-size:14px}
+.back{color:var(--speed);font-weight:600;font-size:16px;display:inline-flex;align-items:center;gap:2px;align-self:flex-start;padding:2px 0}
+.back svg{width:18px;height:18px}
+.hd-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* Barre d'onglets */
+#nav{flex:none;display:flex;border-top:1px solid var(--line);background:var(--surface);padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px))}
+#nav button{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;font-size:12px;font-weight:500;color:var(--muted)}
+#nav button svg{width:24px;height:24px}
+#nav button.on{color:var(--speed);font-weight:700}
+
+/* Composants */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap}
+.chip.on{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.pcard{width:100%;text-align:left;padding:12px 14px;display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:2px 12px;align-items:center}
+.pcard:active{background:var(--surface-2)}
+.pcard .nm{font-weight:600;font-size:16.5px;line-height:1.25;overflow-wrap:anywhere}
+.pcard .m{color:var(--muted);font-size:13.5px;grid-column:1}
+.pcard svg{grid-row:1 / span 2;grid-column:2;width:92px;height:36px}
+.badge{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 6px;border-radius:5px;margin-left:6px;vertical-align:2px;background:var(--surface-2);color:var(--muted)}
+.badge.mine{background:var(--speed-soft);color:var(--speed)}
+.state{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.state i{width:7px;height:7px;border-radius:50%;background:currentColor}
+.state.ok{background:var(--ok-soft);color:var(--ok)}
+.state.draft{background:var(--grade-soft);color:var(--warn)}
+.state.neutral{background:var(--surface-2);color:var(--muted)}
+.btn{height:50px;border-radius:13px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:700;font-size:16.5px;border:1px solid var(--line);background:var(--surface);padding:0 14px;white-space:nowrap}
+.btn svg{width:18px;height:18px;flex:none}
+.btn.pri{background:var(--speed);border-color:var(--speed);color:#fff}
+.btn.dark{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.btn.sm{height:44px;font-size:15.5px;font-weight:600}
 .btn.danger{color:var(--danger)}
-.btn.sm{padding:6px 10px;font-size:13px}
-.btn svg{width:16px;height:16px}
-.prog-list{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
-.prog{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;width:100%;text-align:left;border:1px solid transparent;background:transparent;border-radius:var(--r);padding:10px 12px}
-.prog:hover{background:var(--surface-2)}
-.prog[aria-current="true"]{background:var(--surface-2);border-color:var(--line)}
-.prog-name{font-weight:600;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.25}
-.prog-meta{grid-column:1/-1;color:var(--muted);font-size:12.5px;display:flex;gap:10px}
-.prog svg{grid-row:1;grid-column:2;width:64px;height:22px}
-.lib-foot{margin-top:auto;color:var(--muted);font-size:12px;display:flex;flex-direction:column;gap:10px}
-.lib-foot p{margin:0}
-.io{display:flex;gap:8px}
-.io .btn{flex:1;justify-content:center}
-.ver{font-size:11px;color:var(--muted);opacity:.85;letter-spacing:.02em;display:inline-flex;align-items:center;gap:6px}
-.ver::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.btn.danger.fill{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn:disabled{opacity:.45}
+.lnk{color:var(--speed);font-weight:600}
+.row3{display:grid;grid-template-columns:1fr 1fr 52px;gap:8px}
+.small{font-size:13.5px;color:var(--muted)}
+.center{text-align:center}
+.grp-t{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:4px 4px 0}
+.chart{padding:10px 10px 6px}
+.chart svg{width:100%;height:auto;display:block}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 12px;min-width:0}
+.kpi span{display:block;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.kpi b{font-family:var(--f-display);font-size:27px;line-height:1.1}
+.kpi b small{font-family:var(--f-body);font-size:13px;color:var(--muted);font-weight:500;margin-left:3px}
+.kpi.s b{color:var(--speed)} .kpi.g b{color:var(--grade)}
 
-/* ---------- Éditeur ---------- */
-.main{padding-block:22px 48px;padding-inline:28px;display:flex;flex-direction:column;gap:18px;min-width:0}
-.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.name-wrap{flex:1 1 280px;min-width:0}
-.name-input{width:100%;border:1px solid transparent;background:transparent;border-radius:8px;padding:2px 8px;margin-left:-8px;font-family:var(--f-display);font-weight:700;font-size:34px;line-height:1.1;letter-spacing:.005em}
-.name-input:hover{border-color:var(--line)}
-.name-input:focus{border-color:var(--speed);background:var(--surface);outline:none}
-.saved{color:var(--muted);font-size:12.5px;display:flex;align-items:center;gap:6px;margin-top:2px}
-.saved i{width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block}
-.actions{display:flex;gap:8px;flex-wrap:wrap}
+.seg{display:flex;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:3px}
+.seg button{flex:1;text-align:center;padding:8px 0;border-radius:8px;font-weight:600;font-size:15px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.field{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-top:1px solid var(--line);gap:10px;min-height:54px}
+.field:first-child{border-top:0}
+.field > .lab{font-weight:500;display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.field > .lab small{font-size:12.5px;color:var(--muted);font-weight:400}
+.field .val{color:var(--muted);font-size:14.5px;text-align:right}
+.step{display:flex;align-items:center;gap:6px;flex:none}
+.step button{width:38px;height:38px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);display:grid;place-items:center;font-weight:700;font-size:19px;user-select:none;-webkit-user-select:none}
+.step button:active{transform:scale(.94)}
+.step b{min-width:76px;text-align:center;font-family:var(--f-display);font-size:22px;white-space:nowrap}
+.step b small{font-family:var(--f-body);font-size:12px;color:var(--muted);font-weight:500;margin-left:2px}
+.mini-seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;flex:none}
+.mini-seg button{padding:7px 11px;font-size:14px;font-weight:600;color:var(--muted)}
+.mini-seg button + button{border-left:1px solid var(--line)}
+.mini-seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.form-forme{flex-direction:column;align-items:stretch}
+.form-forme .mini-seg button{flex:1}
+.namef{padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+.namef label{font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.txt{width:100%;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:10px 12px;font-weight:600}
+.txt:focus{border-color:var(--speed);outline:none}
+select.txt{appearance:auto}
+.pv{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.pv svg{width:100%;height:auto;display:block}
+.pv-st{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.pv-st div{display:flex;flex-direction:column;min-width:0}
+.pv-st span{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.pv-st b{font-family:var(--f-display);font-size:20px;line-height:1.1}
+.status-line{display:flex;gap:8px;align-items:flex-start;font-size:14px;font-weight:600;color:var(--ok)}
+.status-line i{flex:none;width:8px;height:8px;border-radius:50%;background:currentColor;margin-top:6px}
+.status-line.warn{color:var(--warn)}
+.foot{flex:none;padding:10px 16px;border-top:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;gap:8px}
+.foot .two{display:grid;grid-template-columns:1fr 1.5fr;gap:8px}
+.foot .tot{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px;flex-wrap:wrap}
+.foot .tot b{font-family:var(--f-display);font-size:19px}
+.fab{position:absolute;left:16px;right:16px;bottom:14px;height:52px;border-radius:14px;background:var(--speed);color:#fff;font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 10px 24px -10px rgba(31,87,214,.7);z-index:2}
+.fab svg{width:18px;height:18px}
 
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px}
-.params{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) repeat(4,minmax(0,1fr));}
-.param,.kpi{padding:14px 18px;display:flex;flex-direction:column;gap:6px;min-width:0}
-.param + .param, .kpi{border-left:1px solid var(--line)}
-.param label,.kpi .eyebrow{font-size:11.5px}
-.stepper{display:flex;align-items:center;gap:4px}
-.stepper button{width:30px;height:30px;border-radius:7px;border:1px solid var(--line);background:var(--surface-2);font-weight:700;font-size:17px;line-height:1;display:grid;place-items:center}
-.stepper input{width:64px;text-align:center;border:1px solid var(--line);border-radius:7px;background:var(--surface);padding:3px 4px;font-family:var(--f-display);font-weight:700;font-size:24px}
-.unit{color:var(--muted);font-size:13px;margin-left:2px}
-.kpi b{font-family:var(--f-display);font-weight:700;font-size:30px;line-height:1}
-.kpi b small{font-family:var(--f-body);font-weight:500;font-size:13px;color:var(--muted);margin-left:3px}
-.kpi.speed b{color:var(--speed)} .kpi.grade b{color:var(--grade)}
-.sub{color:var(--muted);font-size:12px}
+/* Fiche : liste des paliers */
+.plist{padding:2px 0}
+.ph,.pr{display:grid;grid-template-columns:48px 1fr 1fr 1fr 1fr;gap:4px;align-items:center;padding:7px 12px;font-size:14.5px}
+.ph{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;padding-bottom:3px}
+.ph span:not(:first-child),.pr span:not(:first-child){text-align:right}
+.pr{border-top:1px solid var(--line)}
+.pr .t{font-family:var(--f-display);font-weight:700;font-size:16px}
+.pr .v{color:var(--speed);font-weight:600} .pr .p{color:var(--grade);font-weight:600}
+.pr .c{color:var(--muted)}
 
-/* ---------- Graphique ---------- */
-.chart-panel{padding:16px 18px 10px}
-.chart-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
-.chart-head h2{margin:0;font-family:var(--f-display);font-weight:600;font-size:20px}
-.legend{display:flex;gap:16px;color:var(--muted);font-size:13px;align-items:center;flex-wrap:wrap}
-.legend span{display:inline-flex;align-items:center;gap:6px}
-.sw-bar{width:12px;height:12px;border-radius:2px;background:var(--speed)}
-.sw-line{width:18px;height:3px;border-radius:2px;background:var(--grade)}
-.seg-ctl{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.seg-ctl button{border:0;background:transparent;padding:6px 11px;font-size:13px;font-weight:600;color:var(--muted)}
-.seg-ctl button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
-#chart{width:100%;height:300px;display:block;touch-action:none;user-select:none;cursor:ns-resize}
-.hint{color:var(--muted);font-size:12.5px;margin:4px 0 0}
+/* Éditeur */
+.edhd{flex:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;padding:8px 14px}
+.edhd .cancel{color:var(--speed);font-weight:500;font-size:16px;padding:6px 2px}
+.edhd .t{font-weight:700;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.edhd .save{background:var(--speed);color:#fff;font-weight:700;padding:8px 14px;border-radius:10px;font-size:15.5px}
+.edhd .save:disabled{opacity:.4}
+.ed-top{position:sticky;top:0;z-index:2;background:var(--bg);padding-top:2px;padding-bottom:6px;display:flex;flex-direction:column;gap:6px;margin:0 -16px;padding-inline:16px}
+.ehead{display:grid;grid-template-columns:48px minmax(0,1fr) minmax(0,1fr);gap:8px;padding:0 10px;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.ehead span:not(:first-child){text-align:center}
+.er{display:grid;grid-template-columns:48px minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center;padding:6px 10px;border-top:1px solid var(--line)}
+.er:first-child{border-top:0}
+.er .t{font-family:var(--f-display);font-weight:700;font-size:16.5px}
+.er.hl{background:var(--speed-soft)}
+.cs{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface);min-width:0}
+.cs button{width:38px;height:38px;flex:none;display:grid;place-items:center;background:var(--surface-2);font-weight:700;font-size:19px;user-select:none;-webkit-user-select:none}
+.cs button:active{background:var(--line)}
+.cs input{width:100%;min-width:0;border:0;background:transparent;text-align:center;font-weight:700;padding:0;height:38px}
+.cs input:focus{outline:none;background:var(--surface-2)}
+.cs.v button,.cs.v input{color:var(--speed)} .cs.p button,.cs.p input{color:var(--grade)}
 
-/* ---------- Tableau ---------- */
-.table-wrap{overflow-x:auto}
-table{width:100%;border-collapse:collapse;min-width:800px}
-th,td{padding:7px 12px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
-th{font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--surface);position:sticky;top:0}
-th:first-child,td:first-child{text-align:left}
-tbody tr:hover{background:var(--surface-2)}
-tbody tr.hl{background:var(--speed-soft)}
-.tcum{font-family:var(--f-display);font-weight:700;font-size:18px}
-.time{color:var(--muted);font-size:13px}
-.cell-step{display:inline-flex;align-items:stretch;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
-.cell-step:focus-within{border-color:var(--speed)}
-.bump{width:32px;border:0;background:var(--surface-2);font-weight:700;font-size:17px;line-height:1;display:grid;place-items:center;touch-action:manipulation;user-select:none;-webkit-user-select:none}
-.cell-step.v .bump{color:var(--speed)} .cell-step.p .bump{color:var(--grade)}
-.cell-step.v .bump:hover{background:var(--speed-soft)} .cell-step.p .bump:hover{background:var(--grade-soft)}
-.bump:active{transform:scale(.92)}
-.cell-step .cell-in{border:0;border-radius:0;width:54px;text-align:center;padding:6px 2px}
-.cell-in{width:68px;text-align:right;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:4px 8px;font-weight:600}
-.cell-in.v{color:var(--speed)} .cell-in.p{color:var(--grade)}
-.cell-in:focus{border-color:var(--speed);outline:none}
-.cell-in.bad{border-color:var(--danger)}
-td.cum{color:var(--muted)}
-tfoot td{font-weight:700;border-bottom:0;font-family:var(--f-display);font-size:18px}
-.tab-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px 6px}
-.tab-head h2{margin:0;font-family:var(--f-display);font-weight:600;font-size:20px}
+/* Feuilles (bas d'écran) */
+#sheet{position:fixed;inset:0;z-index:40;display:flex;align-items:flex-end;justify-content:center;background:var(--scrim)}
+.sh{width:100%;max-width:600px;max-height:88%;overflow-y:auto;background:var(--surface);border-radius:18px 18px 0 0;padding:10px 16px calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px}
+.sh .grab{width:40px;height:5px;border-radius:3px;background:var(--line);align-self:center;margin-bottom:4px}
+.sh h3{margin:0;font-family:var(--f-display);font-size:24px}
+.sh p{margin:0;color:var(--muted)}
+.sh .pick{display:flex;flex-direction:column}
+.sh .pick button{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:2px 12px;text-align:left;padding:10px 4px;border-top:1px solid var(--line);align-items:center}
+.sh .pick button:first-child{border-top:0}
+.sh .pick svg{grid-row:1 / span 2;grid-column:2;width:92px;height:34px}
+.sh .pick .m{color:var(--muted);font-size:13.5px}
+.sh .pick button[aria-current="true"] .nm{color:var(--speed)}
 
-/* ---------- Modale ---------- */
-.scrim{position:fixed;inset:0;background:rgba(5,9,14,.55);display:grid;place-items:center;padding:16px;z-index:40}
-.modal{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;width:min(440px,100%);display:flex;flex-direction:column;gap:14px}
-.modal h3{margin:0;font-family:var(--f-display);font-size:24px}
-.modal p{margin:0;color:var(--muted)}
-.field{display:flex;flex-direction:column;gap:6px}
-.field input[type=text]{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface);font-size:16px}
-.choices{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.choice{border:1px solid var(--line);border-radius:10px;padding:10px 12px;text-align:left;background:var(--surface)}
-.choice[aria-pressed="true"]{border-color:var(--speed);background:var(--speed-soft)}
-.choice b{display:block}
-.choice span{color:var(--muted);font-size:12.5px}
-.modal-actions{display:flex;justify-content:flex-end;gap:8px}
-.err{color:var(--danger);font-size:13px}
-.modal{max-height:calc(100% - 8px);overflow:auto}
+/* Réglages */
+.sw{width:50px;height:30px;border-radius:15px;background:var(--line);position:relative;flex:none;transition:background .15s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s}
+.sw[aria-checked="true"]{background:var(--ok)} .sw[aria-checked="true"]::after{left:23px}
 
-/* ---------- Création automatique ---------- */
-.btn-auto{width:100%;justify-content:center;padding:10px 12px;border-color:var(--speed);color:var(--speed);background:var(--speed-soft)}
-.btn-auto:hover{background:var(--speed-soft);filter:brightness(1.05)}
-.modal.wide{width:min(600px,100%)}
-.auto-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px}
-.auto-grid .stepper input{width:76px;font-size:22px}
-.seg2{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
-.seg2 button{flex:1;border:0;background:var(--surface);padding:9px 10px;font-weight:600;color:var(--muted)}
-.seg2 button + button{border-left:1px solid var(--line)}
-.seg2 button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
-.seg2 button small{display:block;font-weight:500;font-size:11.5px;opacity:.8}
-.preview{border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:12px 14px;display:flex;flex-direction:column;gap:10px}
-.preview svg{width:100%;height:120px;display:block}
-.pv-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
-.pv-stats div{display:flex;flex-direction:column}
-.pv-stats b{font-family:var(--f-display);font-size:22px;line-height:1.1}
-.pv-stats span{font-size:11.5px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
-.pv-status{font-size:13.5px;display:flex;gap:8px;align-items:flex-start}
-.pv-status i{flex:none;width:8px;height:8px;border-radius:50%;margin-top:6px;background:var(--ok)}
-.pv-status.warn i{background:var(--grade)}
-@media (max-width: 560px){
-  .auto-grid{grid-template-columns:1fr}
-  .pv-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
-}
+/* Onglet Séance */
+.tg{display:flex;gap:8px}
+.tg button{display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;font-weight:600;font-size:14px;border:1px solid var(--line);color:var(--muted);background:var(--surface)}
+.tg button[aria-pressed="true"]{background:var(--speed);border-color:var(--speed);color:#fff}
+.tg button[aria-pressed="false"] svg{opacity:.55}
+.tg svg{width:18px;height:18px}
+.sess{padding:14px;display:flex;flex-direction:column;gap:10px}
+.sess .nm{font-family:var(--f-display);font-size:24px;font-weight:700;line-height:1.1}
 
-/* ---------- Mode séance ---------- */
-.run{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;flex-direction:column;padding-block:calc(env(safe-area-inset-top,0px) + 18px) calc(env(safe-area-inset-bottom,0px) + 18px);padding-inline:20px;gap:16px;overflow:auto}
-.run-top{display:flex;justify-content:space-between;align-items:center;gap:10px 12px;flex-wrap:wrap}
-.run-top h3{margin:0;font-family:var(--f-display);font-size:22px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 180px;min-width:0}
-.snd{display:flex;gap:8px}
-.snd-btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:10px;padding:8px 12px;font-weight:600;font-size:14px;touch-action:manipulation}
-.snd-btn svg{width:20px;height:20px;flex:none}
-.snd-btn span{display:flex;flex-direction:column;line-height:1.1;text-align:left}
-.snd-btn em{font-style:normal;font-weight:500;font-size:11.5px;opacity:.85}
-.snd-btn[aria-pressed="true"]{background:var(--speed);border-color:var(--speed);color:#fff}
-.snd-btn[aria-pressed="false"] svg{opacity:.55}
-.run-clock{font-family:var(--f-display);font-weight:700;font-size:clamp(56px,13vw,120px);line-height:.95;text-align:center;letter-spacing:.01em}
-.run-clock.cd{color:var(--grade);animation:cdPulse 1s ease-out infinite}
+/* Séance plein écran */
+#run{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;align-items:center;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.rw{width:100%;max-width:600px;height:100%;display:flex;flex-direction:column;padding:8px 16px 14px;gap:14px;overflow-y:auto;overflow-x:hidden}
+.run-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.run-top .nm{font-family:var(--f-display);font-size:20px;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.run-top .x{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;flex:none}
+.run-top .x svg{width:18px;height:18px}
+.clock{font-family:var(--f-display);font-weight:700;font-size:clamp(76px,24vw,120px);line-height:.95;text-align:center}
+.clock.cd{color:var(--grade);animation:cdPulse 1s ease-out infinite}
 @keyframes cdPulse{0%{transform:scale(1.06)}60%{transform:scale(1)}}
-.run-sub{text-align:center;color:var(--muted)}
-.run-targets{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:760px;width:100%;margin:0 auto}
-.target{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:2px}
-.target b{font-family:var(--f-display);font-size:clamp(48px,11vw,92px);line-height:1}
-.target.v b{color:var(--speed)} .target.p b{color:var(--grade)}
-.target .next{color:var(--muted);font-size:14px}
-.next strong{color:var(--ink)}
-.bar{height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden;max-width:760px;width:100%;margin:0 auto}
-.bar i{display:block;height:100%;background:var(--speed);width:0}
-.run-strip{display:grid;grid-template-columns:repeat(18,1fr);gap:3px;max-width:760px;width:100%;margin:0 auto;height:56px;align-items:end}
-.run-strip i{background:var(--line);border-radius:2px 2px 0 0}
-.run-strip i.done{background:var(--speed-soft)}
-.run-strip i.now{background:var(--speed)}
-.run-stats{display:flex;justify-content:center;gap:28px;color:var(--muted);flex-wrap:wrap}
-.run-stats b{color:var(--ink);font-family:var(--f-display);font-size:24px;margin-right:4px}
-.run-ctl{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
-.run-ctl .btn{padding:12px 20px;font-size:16px}
+.clock-s{text-align:center;color:var(--muted);font-size:14px}
+.pbar{height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden;flex:none}
+.pbar i{display:block;height:100%;width:0;background:var(--speed)}
+.big2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tgt{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px;min-width:0}
+.tgt span{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.tgt b{display:block;font-family:var(--f-display);font-size:clamp(56px,17vw,84px);line-height:1}
+.tgt.v b{color:var(--speed)} .tgt.p b{color:var(--grade)}
+.tgt em{font-style:normal;font-size:14px;color:var(--muted)}
+.tgt em strong{color:var(--ink)}
+.rstrip{width:100%;height:56px;display:block;flex:none}
+.rstats{display:flex;justify-content:space-around;color:var(--muted);font-size:14px;flex-wrap:wrap;gap:6px}
+.rstats b{color:var(--ink);font-family:var(--f-display);font-size:23px;margin-right:3px}
+.rctl{display:grid;grid-template-columns:64px 1fr 64px;gap:12px;align-items:center;margin-top:auto}
+.rctl .c{height:64px;width:64px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center}
+.rctl .c svg{width:24px;height:24px}
+.rctl .go{height:64px;border-radius:32px;background:var(--speed);color:#fff;font-weight:700;font-size:19px}
+.rctl .go.pause{background:var(--ink);color:var(--bg)}
+.done-card{padding:18px;display:flex;flex-direction:column;gap:12px;align-items:stretch;text-align:center}
+.done-card h2{margin:0;font-family:var(--f-display);font-size:34px}
 
-.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:60;font-size:14px}
-
-/* ---------- Responsive ---------- */
-@media (max-width: 1100px){
-  .params{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .kpi:nth-of-type(3){border-left:0}
-  .params > :nth-child(n+4){border-top:1px solid var(--line)}
-  .params > :nth-child(4){border-left:0}
-}
-@media (max-width: 860px){
-  .app{grid-template-columns:minmax(0,1fr)}
-  .lib{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);padding-block:14px}
-  .prog-list{flex-direction:row;overflow-x:auto;padding-bottom:4px}
-  .prog{min-width:210px;border-color:var(--line)}
-  .lib-foot{margin-top:0}
-  .lib-foot p{display:none}
-  .lib-foot{flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap}
-  .io .btn{flex:0 0 auto}
-  .main{padding-inline:16px}
-  .name-input{font-size:28px}
-}
-@media (max-width: 560px){
-  .params{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .params > *{border-left:0 !important;border-top:1px solid var(--line)}
-  .params > :nth-child(-n+2){border-top:0}
-  .params > :nth-child(even){border-left:1px solid var(--line) !important}
-  #chart{height:240px}
-  .choices{grid-template-columns:1fr}
-}
-@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+#toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 12px);transform:translateX(-50%);box-shadow:0 8px 24px -10px rgba(0,0,0,.5);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:60;font-size:15px;max-width:calc(100% - 32px);text-align:center}
+.ver{font-size:12px;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px}
+.ver::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.empty{padding:24px 16px;text-align:center;color:var(--muted)}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<div class="app">
-  <aside class="lib" aria-label="Mes programmes">
-    <div class="brand">
-      <div class="brand-mark">F63</div>
-      <div><h1>Programmes</h1><small>Tapis Sole F63</small></div>
-    </div>
-    <div class="lib-head">
-      <span class="eyebrow" id="libCount">Programmes</span>
-      <button class="btn sm primary" id="btnNew" type="button">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>Nouveau</button>
-    </div>
-    <button class="btn btn-auto" id="btnAuto" type="button">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5v3M8 11.5v3M1.5 8h3M11.5 8h3M3.4 3.4l2 2M10.6 10.6l2 2M3.4 12.6l2-2M10.6 5.4l2-2"/></svg>Création automatique</button>
-    <ul class="prog-list" id="progList"></ul>
-    <div class="lib-foot">
-      <div class="io">
-        <button class="btn sm" id="btnExport" type="button">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>Exporter</button>
-        <button class="btn sm" id="btnImport" type="button">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10V2M5 5l3-3 3 3M3 13h10"/></svg>Importer</button>
-        <input type="file" id="fileImport" accept=".json,application/json" hidden>
-      </div>
-      <p>Vos programmes sont enregistrés automatiquement sur cet appareil. Exportez-les pour les retrouver sur un autre.</p>
-      <span class="ver" id="appVer" hidden></span>
-    </div>
-  </aside>
-
-  <main class="main">
-    <div class="top">
-      <div class="name-wrap">
-        <input class="name-input" id="progName" type="text" aria-label="Nom du programme" maxlength="60">
-        <div class="saved" id="savedState"><i></i><span>Enregistré</span></div>
-      </div>
-      <div class="actions">
-        <button class="btn" id="btnDup" type="button">Dupliquer</button>
-        <button class="btn danger" id="btnDel" type="button">Supprimer</button>
-        <button class="btn go" id="btnRun" type="button">
-          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg>Lancer la séance</button>
-      </div>
-    </div>
-
-    <section class="panel params" aria-label="Paramètres et totaux">
-      <div class="param">
-        <label class="eyebrow" for="inMin">Temps total</label>
-        <div class="stepper">
-          <button type="button" data-step="min" data-d="-1" aria-label="Moins 1 minute">−</button>
-          <input id="inMin" type="text" inputmode="numeric" value="40">
-          <button type="button" data-step="min" data-d="1" aria-label="Plus 1 minute">+</button>
-          <span class="unit">min</span>
-        </div>
-        <span class="sub" id="segDur">18 × 2 min 13 s</span>
-      </div>
-      <div class="param">
-        <label class="eyebrow" for="inKg">Poids</label>
-        <div class="stepper">
-          <button type="button" data-step="kg" data-d="-1" aria-label="Moins 1 kg">−</button>
-          <input id="inKg" type="text" inputmode="decimal" value="120">
-          <button type="button" data-step="kg" data-d="1" aria-label="Plus 1 kg">+</button>
-          <span class="unit">kg</span>
-        </div>
-        <span class="sub">sert au calcul des kcal</span>
-      </div>
-      <div class="kpi"><span class="eyebrow">Distance</span><b id="kDist">0<small>km</small></b><span class="sub" id="kPace"></span></div>
-      <div class="kpi"><span class="eyebrow">Dépense</span><b id="kKcal">0<small>kcal</small></b><span class="sub" id="kKcalMin"></span></div>
-      <div class="kpi speed"><span class="eyebrow">Vitesse moy.</span><b id="kSpeed">0<small>km/h</small></b><span class="sub" id="kSpeedRange"></span></div>
-      <div class="kpi grade"><span class="eyebrow">Pente moy.</span><b id="kGrade">0<small>%</small></b><span class="sub" id="kGradeRange"></span></div>
-    </section>
-
-    <section class="panel chart-panel" aria-label="Profil du programme">
-      <div class="chart-head">
-        <h2>Profil de la séance</h2>
-        <div class="legend">
-          <span><i class="sw-bar"></i>Vitesse (km/h)</span>
-          <span><i class="sw-line"></i>Pente (%)</span>
-          <div class="seg-ctl" role="group" aria-label="Glisser pour modifier">
-            <button type="button" data-mode="v" aria-pressed="true">Régler vitesse</button>
-            <button type="button" data-mode="p" aria-pressed="false">Régler pente</button>
-          </div>
-        </div>
-      </div>
-      <svg id="chart" role="img" aria-label="Histogramme des vitesses et courbe de pente"></svg>
-      <p class="hint">Glissez sur le graphique pour dessiner le profil, ou saisissez les valeurs dans le tableau.</p>
-    </section>
-
-    <section class="panel" aria-label="Détail des segments">
-      <div class="tab-head">
-        <h2>Détail de la séance</h2>
-        <span class="sub">Vitesse 0,8 à 18 km/h · Pente 0 à 15 %</span>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th>Durée cumulée</th><th>Pente %</th><th>Vitesse km/h</th>
-            <th>Distance km</th><th>Dist. cumulée</th><th>Kcal</th><th>Kcal cumulées</th>
-          </tr></thead>
-          <tbody id="rows"></tbody>
-          <tfoot><tr>
-            <td id="fTime"></td><td id="fGrade"></td><td id="fSpeed"></td>
-            <td id="fDist"></td><td></td><td id="fKcal"></td><td></td>
-          </tr></tfoot>
-        </table>
-      </div>
-    </section>
-  </main>
+<div id="app">
+  <div id="view"></div>
+  <nav id="nav" aria-label="Navigation"></nav>
 </div>
-
-<div class="scrim" id="modal" hidden></div>
-<div class="run" id="run" hidden></div>
-<div class="toast" id="toast" hidden></div>
+<div id="sheet" hidden></div>
+<div id="run" hidden></div>
+<div id="toast" hidden role="status"></div>
 
 <script>
 (() => {
-  /* ===== Limites machine (à ajuster si besoin) ===== */
+  /* ===================== Constantes et outils ===================== */
   const N = 18, VMIN = 0.8, VMAX = 18, PMIN = 0, PMAX = 15;
   const KEY = 'solef63.programs.v1';
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const nf = d => new Intl.NumberFormat('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const f0 = nf(0), f1 = nf(1), f2 = nf(2), f3 = nf(3);
+  const fp = x => f1.format(x).replace(/,0$/, '');
+  const num = s => { const x = parseFloat(String(s).replace(',', '.').replace(/\s/g, '')); return isFinite(x) ? x : NaN; };
+  const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+  const r1 = x => Math.round(x * 10) / 10;
+  const mmss = min => { const t = Math.round(min * 60); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+  const durTxt = min => { const t = Math.round(min * 60), m = Math.floor(t / 60), s = t % 60; return s ? `${m} min ${String(s).padStart(2, '0')} s` : `${m} min`; };
+  const uid = () => Math.random().toString(36).slice(2, 10);
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const ls = {
+    get(k, d){ try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch(e){ return d; } },
+    set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch(e){ return false; } }
+  };
+  const ICON = {
+    back: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg>',
+    plus: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>',
+    play: '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5z"/></svg>',
+    bell: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5a5 5 0 0 0-5 5v3.2L3.5 14h13L15 10.7V7.5a5 5 0 0 0-5-5zM8 16.5a2 2 0 0 0 4 0"/></svg>',
+    voice: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8v4h3l4 3.5v-11L6 8H3zM13.5 7.2a4 4 0 0 1 0 5.6M15.8 5a7 7 0 0 1 0 10"/></svg>',
+    x: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>',
+    prev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L10 12l8 6V6zM6 6v12"/></svg>',
+    next: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l8 6-8 6V6zM18 6v12"/></svg>'
+  };
 
-  /* ===== Calculs, identiques au fichier Excel TradeMil ===== */
-  function compute(p){
+  /* ===================== Programmes prédéfinis ===================== */
+  const mk = (v, p) => v.map((x, i) => ({ v: x, p: p[i] }));
+  const SEEDS = [
+    { sid: 's1', name: 'Intervalles 40 min', minutes: 40, v: [3.6,3.8,5.8,3.6,5.8,3.6,5.8,3.6,5.8,3.6,3.6,5.8,3.5,5.8,3.6,5.8,4,4], p: [0,2,4,2,4,2,4,2,4,0,2,6,2,6,2,6,2,0] },
+    { sid: 's2', name: 'Côte progressive', minutes: 30, v: [3.5,4,4.5,4.8,5,5,5,5,5,5,5,5,5,5,4.8,4.5,4,3.5], p: [0,1,2,3,4,5,6,7,8,8,7,6,5,4,3,2,1,0] },
+    { sid: 's3', name: 'Marche active 45 min', minutes: 45, v: [3.8,4.5,5.2,5.5,5.5,6,5.5,6,5.5,6,5.5,6,5.5,6,5.5,5,4.5,3.8], p: [1,1,2,2,3,2,3,2,3,2,3,2,3,2,2,1,1,0] },
+    { sid: 's4', name: 'Récupération douce 25 min', minutes: 25, v: [3,3.3,3.6,3.8,4,4,4.2,4.2,4.2,4.2,4.2,4,4,3.8,3.6,3.4,3.2,3], p: [0,0,0,1,1,1,1,2,2,2,1,1,1,1,0,0,0,0] },
+    { sid: 's5', name: 'Escalier de pente 40 min', minutes: 40, v: [4,4.3,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.3,4,3.8], p: [0,2,2,4,4,6,6,8,8,10,10,12,12,8,6,4,2,0] },
+    { sid: 's6', name: 'Fractionné marche rapide 35 min', minutes: 35, v: [4,4.5,6.2,4.5,6.4,4.5,6.5,4.5,6.5,4.5,6.5,4.5,6.4,4.5,6.2,4.5,4.2,3.8], p: [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0] },
+    { sid: 's7', name: 'Randonnée vallonnée 50 min', minutes: 50, v: [4,4.5,5,4.6,4.3,5,4.4,4.2,5.2,4.6,4.2,4,5,4.6,4.3,5,4.5,4], p: [1,2,3,6,8,2,7,10,1,5,9,11,3,6,8,2,1,0] },
+    { sid: 's8', name: 'Endurance longue 60 min', minutes: 60, v: [4,4.4,4.8,5,5.2,5.2,5.4,5.2,5.4,5.2,5.4,5.2,5.4,5.2,5,4.8,4.4,4], p: [0,1,1,2,2,3,2,3,2,3,2,3,2,3,2,1,1,0] },
+    { sid: 's9', name: 'Pente modérée continue 45 min', minutes: 45, v: [4,4.3,4.6,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.6,4.3,4], p: [0,1,2,3,4,5,5,5,5,5,5,5,5,5,4,3,2,0] },
+    { sid: 's10', name: 'Express 20 min', minutes: 20, v: [4,4.5,5,5.5,6,5,6.2,5,6.3,5,6.4,5,6.2,5,6,5,4.5,4], p: [0,1,2,3,3,2,3,2,4,2,4,2,3,2,3,2,1,0] }
+  ];
+  const fromSeed = (s, k) => ({ id: uid(), sid: s.sid, name: s.name, minutes: s.minutes, updated: Date.now() - k * 1000, segs: mk(s.v, s.p) });
+
+  /* ===================== Données ===================== */
+  function loadProgs(){
+    let list = ls.get(KEY, null), offered = ls.get(KEY + '.seeds', []);
+    if (!Array.isArray(list) || !list.length){ list = []; offered = []; }
+    if (!Array.isArray(offered)) offered = [];
+    let added = false;
+    SEEDS.forEach((s, k) => {
+      if (offered.includes(s.sid)) return;
+      if (!list.some(p => p.sid === s.sid || p.name === s.name)){ list.push(fromSeed(s, k)); added = true; }
+      offered.push(s.sid);
+    });
+    list = list.filter(p => p && Array.isArray(p.segs) && p.segs.length === N);
+    if (added || !localStorage.getItem(KEY)) ls.set(KEY, list);
+    ls.set(KEY + '.seeds', offered);
+    return list;
+  }
+  let progs = loadProgs();
+  let saveT = null;
+  function saveProgs(){ clearTimeout(saveT); if (!ls.set(KEY, progs)) toast('Stockage indisponible : les changements seront perdus à la fermeture'); }
+
+  // Réglages globaux (poids unique, vitesses max, sons). Migration depuis l'ancienne version.
+  const settings = Object.assign({ weight: null, walkMax: 5.8, runMax: 11, beep: true, voice: false }, ls.get(KEY + '.settings', {}));
+  if (settings.weight == null){
+    settings.weight = (progs.find(p => p.weight) || {}).weight || 120;
+    Object.assign(settings, ls.get(KEY + '.sound', {}));
+  }
+  const saveSettings = () => ls.set(KEY + '.settings', settings);
+  saveSettings();
+  let lastId = ls.get(KEY + '.last', null);
+  const byId = id => progs.find(p => p.id === id);
+  const kindOf = p => p.sid ? 'seed' : (p.origin === 'auto' ? 'auto' : 'user');
+
+  /* ===================== Calculs (formules du fichier Excel TradeMil) ===================== */
+  function compute(p, weight = settings.weight){
     const segMin = p.minutes / N;
     let dc = 0, kc = 0;
     const rows = p.segs.map((s, i) => {
       const mPerMin = s.v * 1000 / 60;
       const dist = s.v * (segMin / 60);
-      const kcal = ((0.1 * mPerMin) + (1.8 * mPerMin * (s.p / 100)) + 3.5) * p.weight / 200 * segMin;
+      const kcal = ((0.1 * mPerMin) + (1.8 * mPerMin * (s.p / 100)) + 3.5) * weight / 200 * segMin;
       dc += dist; kc += kcal;
-      return { i, start: segMin * i, dist, distCum: dc, kcal, kcalCum: kc, v: s.v, p: s.p };
+      return { i, end: segMin * (i + 1), dist, distCum: dc, kcal, kcalCum: kc, v: s.v, p: s.p };
     });
-    const avgP = p.segs.reduce((a, s) => a + s.p, 0) / N;
-    const avgV = p.segs.reduce((a, s) => a + s.v, 0) / N;
-    return { segMin, rows, dist: dc, kcal: kc, avgP, avgV };
+    return {
+      segMin, rows, dist: dc, kcal: kc,
+      avgP: p.segs.reduce((a, s) => a + s.p, 0) / N,
+      vMax: Math.max(...p.segs.map(s => s.v)), pMax: Math.max(...p.segs.map(s => s.p))
+    };
   }
 
-  /* ===== Données ===== */
-  const uid = () => Math.random().toString(36).slice(2, 10);
-  const mk = (v, p) => v.map((x, i) => ({ v: x, p: p[i] }));
-  const SEEDS = [
-    { sid: 's1', name: 'Intervalles 40 min', minutes: 40,
-      v: [3.6,3.8,5.8,3.6,5.8,3.6,5.8,3.6,5.8,3.6,3.6,5.8,3.5,5.8,3.6,5.8,4,4],
-      p: [0,2,4,2,4,2,4,2,4,0,2,6,2,6,2,6,2,0] },
-    { sid: 's2', name: 'Côte progressive', minutes: 30,
-      v: [3.5,4,4.5,4.8,5,5,5,5,5,5,5,5,5,5,4.8,4.5,4,3.5],
-      p: [0,1,2,3,4,5,6,7,8,8,7,6,5,4,3,2,1,0] },
-    { sid: 's3', name: 'Marche active 45 min', minutes: 45,
-      v: [3.8,4.5,5.2,5.5,5.5,6,5.5,6,5.5,6,5.5,6,5.5,6,5.5,5,4.5,3.8],
-      p: [1,1,2,2,3,2,3,2,3,2,3,2,3,2,2,1,1,0] },
-    { sid: 's4', name: 'Récupération douce 25 min', minutes: 25,
-      v: [3,3.3,3.6,3.8,4,4,4.2,4.2,4.2,4.2,4.2,4,4,3.8,3.6,3.4,3.2,3],
-      p: [0,0,0,1,1,1,1,2,2,2,1,1,1,1,0,0,0,0] },
-    { sid: 's5', name: 'Escalier de pente 40 min', minutes: 40,
-      v: [4,4.3,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.3,4,3.8],
-      p: [0,2,2,4,4,6,6,8,8,10,10,12,12,8,6,4,2,0] },
-    { sid: 's6', name: 'Fractionné marche rapide 35 min', minutes: 35,
-      v: [4,4.5,6.2,4.5,6.4,4.5,6.5,4.5,6.5,4.5,6.5,4.5,6.4,4.5,6.2,4.5,4.2,3.8],
-      p: [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0] },
-    { sid: 's7', name: 'Randonnée vallonnée 50 min', minutes: 50,
-      v: [4,4.5,5,4.6,4.3,5,4.4,4.2,5.2,4.6,4.2,4,5,4.6,4.3,5,4.5,4],
-      p: [1,2,3,6,8,2,7,10,1,5,9,11,3,6,8,2,1,0] },
-    { sid: 's8', name: 'Endurance longue 60 min', minutes: 60,
-      v: [4,4.4,4.8,5,5.2,5.2,5.4,5.2,5.4,5.2,5.4,5.2,5.4,5.2,5,4.8,4.4,4],
-      p: [0,1,1,2,2,3,2,3,2,3,2,3,2,3,2,1,1,0] },
-    { sid: 's9', name: 'Pente modérée continue 45 min', minutes: 45,
-      v: [4,4.3,4.6,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.6,4.3,4],
-      p: [0,1,2,3,4,5,5,5,5,5,5,5,5,5,4,3,2,0] },
-    { sid: 's10', name: 'Express 20 min', minutes: 20,
-      v: [4,4.5,5,5.5,6,5,6.2,5,6.3,5,6.4,5,6.2,5,6,5,4.5,4],
-      p: [0,1,2,3,3,2,3,2,4,2,4,2,3,2,3,2,1,0] }
-  ];
-  const fromSeed = (s, w, k) => ({ id: uid(), sid: s.sid, name: s.name, example: true, minutes: s.minutes, weight: w, updated: Date.now() - k * 1000, segs: mk(s.v, s.p) });
-  let progs, cur;
-  function load(){
-    let list = null, offered = [];
-    try { const r = JSON.parse(localStorage.getItem(KEY) || 'null'); if (Array.isArray(r) && r.length) list = r; } catch(e){}
-    try { offered = JSON.parse(localStorage.getItem(KEY + '.seeds') || '[]'); } catch(e){}
-    // Liste vide ou effacée : on repropose tous les programmes prédéfinis
-    if (!list){ list = []; offered = []; }
-    const w = list[0]?.weight || 120;
-    // Ajoute les programmes prédéfinis jamais proposés, sans doublon de nom
-    let added = false;
-    SEEDS.forEach((s, k) => {
-      if (offered.includes(s.sid)) return;
-      if (!list.some(p => p.sid === s.sid || p.name === s.name)){ list.push(fromSeed(s, w, k)); added = true; }
-      offered.push(s.sid);
-    });
-    if (!list.length) list.push({ id: uid(), name: 'Nouveau programme', minutes: 40, weight: 120, updated: Date.now(), segs: Array.from({ length: N }, () => ({ v: 4, p: 0 })) });
-    // On enregistre tout de suite, pour ne rien perdre au prochain rechargement
-    try {
-      if (added || !localStorage.getItem(KEY)) localStorage.setItem(KEY, JSON.stringify(list));
-      localStorage.setItem(KEY + '.seeds', JSON.stringify(offered));
-    } catch(e){}
-    return list;
-  }
-  let saveT;
-  function save(){
-    clearTimeout(saveT);
-    setSaved('pending');
-    saveT = setTimeout(() => {
-      try { localStorage.setItem(KEY, JSON.stringify(progs)); setSaved('ok'); }
-      catch(e){ setSaved('fail'); }
-    }, 350);
-  }
-  progs = load();
-  cur = progs[0];
-
-  /* ===== Format ===== */
-  const nf = (d) => new Intl.NumberFormat('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
-  const f0 = nf(0), f1 = nf(1), f2 = nf(2), f3 = nf(3);
-  const num = (s) => { const x = parseFloat(String(s).replace(',', '.').replace(/\s/g, '')); return isFinite(x) ? x : NaN; };
-  const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
-  const mmss = (min) => { const t = Math.round(min * 60); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
-  const durTxt = (min) => { const t = Math.round(min * 60), m = Math.floor(t / 60), s = t % 60; return s ? `${m} min ${String(s).padStart(2,'0')} s` : `${m} min`; };
-  const $ = (id) => document.getElementById(id);
-  const fmt = (f, x) => f === 'v' ? f1.format(x) : f1.format(x).replace(/,0$/, '');
-  const esc = (s) => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-
-  /* ===== Bibliothèque ===== */
-  function mini(p){
-    const w = 64, h = 22, bw = w / N, maxV = Math.max(8, ...p.segs.map(s => s.v)), maxP = Math.max(8, ...p.segs.map(s => s.p));
-    let bars = '', pts = [];
-    p.segs.forEach((s, i) => {
-      const bh = Math.max(1, s.v / maxV * (h - 2));
-      bars += `<rect x="${(i * bw + .4).toFixed(1)}" y="${(h - bh).toFixed(1)}" width="${(bw - .8).toFixed(1)}" height="${bh.toFixed(1)}" fill="var(--speed)" opacity=".55"/>`;
-      pts.push(`${(i * bw + bw / 2).toFixed(1)},${(h - 1 - s.p / maxP * (h - 4)).toFixed(1)}`);
-    });
-    return `<svg viewBox="0 0 ${w} ${h}" aria-hidden="true">${bars}<polyline points="${pts.join(' ')}" fill="none" stroke="var(--grade)" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
-  }
-  function renderLib(){
-    $('libCount').textContent = `${progs.length} programme${progs.length > 1 ? 's' : ''}`;
-    $('progList').innerHTML = progs.map(p => {
-      const c = compute(p);
-      return `<li><button class="prog" type="button" data-id="${p.id}" aria-current="${p.id === cur.id}">
-        <span class="prog-name">${esc(p.name)}</span>${mini(p)}
-        <span class="prog-meta"><span>${f0.format(p.minutes)} min</span><span>${f2.format(c.dist)} km</span><span>${f0.format(c.kcal)} kcal</span></span>
-      </button></li>`;
-    }).join('');
-  }
-  $('progList').addEventListener('click', e => {
-    const b = e.target.closest('.prog'); if (!b) return;
-    cur = progs.find(p => p.id === b.dataset.id); renderAll();
-  });
-
-  /* ===== Éditeur ===== */
-  function renderTable(){
-    const c = compute(cur);
-    $('rows').innerHTML = c.rows.map(r => `<tr data-i="${r.i}">
-      <td class="tcum" data-k="end">${mmss(r.start + c.segMin)}</td>
-      <td><div class="cell-step p"><button type="button" class="bump" data-i="${r.i}" data-f="p" data-d="-1" aria-label="Baisser la pente du segment ${r.i + 1}">−</button><input class="cell-in p" id="p${r.i}" data-i="${r.i}" data-f="p" inputmode="decimal" value="${fmt('p', r.p)}" aria-label="Pente segment ${r.i + 1}"><button type="button" class="bump" data-i="${r.i}" data-f="p" data-d="1" aria-label="Monter la pente du segment ${r.i + 1}">+</button></div></td>
-      <td><div class="cell-step v"><button type="button" class="bump" data-i="${r.i}" data-f="v" data-d="-1" aria-label="Ralentir le segment ${r.i + 1}">−</button><input class="cell-in v" id="v${r.i}" data-i="${r.i}" data-f="v" inputmode="decimal" value="${fmt('v', r.v)}" aria-label="Vitesse segment ${r.i + 1}"><button type="button" class="bump" data-i="${r.i}" data-f="v" data-d="1" aria-label="Accélérer le segment ${r.i + 1}">+</button></div></td>
-      <td data-k="dist"></td><td class="cum" data-k="distCum"></td>
-      <td data-k="kcal"></td><td class="cum" data-k="kcalCum"></td></tr>`).join('');
-    updateComputed();
-  }
-  function updateComputed(){
-    const c = compute(cur);
-    const trs = $('rows').children;
-    c.rows.forEach((r, i) => {
-      const tr = trs[i]; if (!tr) return;
-      tr.querySelector('[data-k="end"]').textContent = mmss(r.start + c.segMin);
-      tr.querySelector('[data-k="dist"]').textContent = f3.format(r.dist);
-      tr.querySelector('[data-k="distCum"]').textContent = f3.format(r.distCum);
-      tr.querySelector('[data-k="kcal"]').textContent = f1.format(r.kcal);
-      tr.querySelector('[data-k="kcalCum"]').textContent = f1.format(r.kcalCum);
-    });
-    $('fTime').textContent = `Total ${durTxt(cur.minutes)}`;
-    $('fGrade').textContent = `moy. ${f1.format(c.avgP)}`;
-    $('fSpeed').textContent = `moy. ${f1.format(c.avgV)}`;
-    $('fDist').textContent = `${f3.format(c.dist)}`;
-    $('fKcal').textContent = `${f1.format(c.kcal)}`;
-
-    $('segDur').textContent = `paliers de ${durTxt(c.segMin)}`;
-    $('kDist').innerHTML = `${f2.format(c.dist)}<small>km</small>`;
-    const pace = c.dist > 0 ? cur.minutes / c.dist : 0;
-    $('kPace').textContent = c.dist > 0 ? `allure moy. ${mmss(pace)} /km` : '';
-    $('kKcal').innerHTML = `${f0.format(c.kcal)}<small>kcal</small>`;
-    $('kKcalMin').textContent = `${f1.format(c.kcal / cur.minutes)} kcal/min`;
-    $('kSpeed').innerHTML = `${f1.format(c.avgV)}<small>km/h</small>`;
-    const vs = cur.segs.map(s => s.v), ps = cur.segs.map(s => s.p);
-    $('kSpeedRange').textContent = `de ${f1.format(Math.min(...vs))} à ${f1.format(Math.max(...vs))}`;
-    $('kGrade').innerHTML = `${f1.format(c.avgP)}<small>%</small>`;
-    $('kGradeRange').textContent = `de ${f0.format(Math.min(...ps))} à ${f0.format(Math.max(...ps))} %`;
-    drawChart();
-  }
-  function renderAll(){
-    $('progName').value = cur.name;
-    $('inMin').value = f0.format(cur.minutes);
-    $('inKg').value = String(cur.weight).replace('.', ',');
-    renderTable(); renderLib();
-  }
-  function touch(){ cur.updated = Date.now(); delete cur.example; save(); updateComputed(); renderLib(); }
-
-  /* Saisie dans le tableau */
-  $('rows').addEventListener('input', e => {
-    const el = e.target; if (!el.classList.contains('cell-in')) return;
-    const i = +el.dataset.i, f = el.dataset.f, x = num(el.value);
-    const [a, b] = f === 'v' ? [VMIN, VMAX] : [PMIN, PMAX];
-    const ok = isFinite(x) && x >= a && x <= b;
-    el.classList.toggle('bad', !ok);
-    if (ok){ cur.segs[i][f] = Math.round(x * 10) / 10; touch(); }
-  });
-  $('rows').addEventListener('change', e => {
-    const el = e.target; if (!el.classList.contains('cell-in')) return;
-    const i = +el.dataset.i, f = el.dataset.f;
-    el.classList.remove('bad');
-    el.value = fmt(f, cur.segs[i][f]);
-  });
-  /* Boutons + / − : pas de 0,1 km/h et 1 % ; maintien appuyé = répétition */
-  function bump(i, f, dir){
-    const step = f === 'v' ? 0.1 : 1;
-    const [a, b] = f === 'v' ? [VMIN, VMAX] : [PMIN, PMAX];
-    const before = cur.segs[i][f];
-    cur.segs[i][f] = Math.round(clamp(before + dir * step, a, b) * 10) / 10;
-    const el = $(f + i); if (el){ el.value = fmt(f, cur.segs[i][f]); el.classList.remove('bad'); }
-    if (cur.segs[i][f] !== before) touch();
-    return cur.segs[i][f] !== before;
-  }
-  let rep = null;
-  const stopRep = () => { if (rep){ clearTimeout(rep.t); clearInterval(rep.iv); rep = null; } };
-  $('rows').addEventListener('pointerdown', e => {
-    const b = e.target.closest('.bump'); if (!b) return;
-    e.preventDefault();
-    const i = +b.dataset.i, f = b.dataset.f, d = +b.dataset.d;
-    hlRow(i); bump(i, f, d); stopRep();
-    rep = { t: setTimeout(() => { rep.iv = setInterval(() => { if (!bump(i, f, d)) stopRep(); }, 70); }, 380) };
-  });
-  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => $('rows').addEventListener(ev, stopRep));
-  $('rows').addEventListener('click', e => {
-    const b = e.target.closest('.bump'); if (!b || e.detail !== 0) return;
-    bump(+b.dataset.i, b.dataset.f, +b.dataset.d); // activation clavier
-  });
-
-  $('rows').addEventListener('keydown', e => {
-    const el = e.target; if (!el.classList.contains('cell-in')) return;
-    const i = +el.dataset.i, f = el.dataset.f;
-    if (e.key === 'ArrowUp' || e.key === 'ArrowDown'){
-      e.preventDefault();
-      bump(i, f, e.key === 'ArrowUp' ? 1 : -1);
-    } else if (e.key === 'Enter'){
-      const nx = $(f + (i + 1)); if (nx){ nx.focus(); nx.select(); } else el.blur();
-    }
-  });
-  $('rows').addEventListener('focusin', e => { const tr = e.target.closest('tr'); hlRow(tr ? +tr.dataset.i : -1); });
-  $('rows').addEventListener('focusout', () => hlRow(-1));
-
-  /* Paramètres */
-  function setMinutes(x){ cur.minutes = clamp(Math.round(x), 5, 240); $('inMin').value = f0.format(cur.minutes); touch(); }
-  function setWeight(x){ cur.weight = clamp(Math.round(x * 10) / 10, 30, 250); $('inKg').value = String(cur.weight).replace('.', ','); touch(); }
-  /* + / − du haut : 1 min ou 1 kg par clic, maintien appuyé = défilement */
-  let prep = null;
-  const stopP = () => { if (prep){ clearTimeout(prep.t); clearInterval(prep.iv); prep = null; } };
-  const stepOnce = (b) => { const d = +b.dataset.d; if (b.dataset.step === 'min') setMinutes(cur.minutes + d); else setWeight(cur.weight + d); };
-  document.querySelectorAll('[data-step]').forEach(b => {
-    b.style.touchAction = 'manipulation';
-    b.addEventListener('pointerdown', e => {
-      e.preventDefault(); stepOnce(b); stopP();
-      prep = { t: setTimeout(() => { prep.iv = setInterval(() => stepOnce(b), 90); }, 380) };
-    });
-    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stopP));
-    b.addEventListener('click', e => { if (e.detail === 0) stepOnce(b); }); // clavier
-  });
-  $('inMin').addEventListener('change', e => { const x = num(e.target.value); isFinite(x) ? setMinutes(x) : (e.target.value = f0.format(cur.minutes)); });
-  $('inKg').addEventListener('change', e => { const x = num(e.target.value); isFinite(x) ? setWeight(x) : (e.target.value = String(cur.weight).replace('.', ',')); });
-  $('progName').addEventListener('input', e => { cur.name = e.target.value.trim() || 'Sans nom'; cur.updated = Date.now(); save(); renderLib(); });
-  $('progName').addEventListener('blur', e => { if (!e.target.value.trim()) e.target.value = cur.name; });
-
-  function setSaved(s){
-    const el = $('savedState');
-    if (s === 'ok') el.innerHTML = '<i></i><span>Enregistré</span>';
-    else if (s === 'pending') el.innerHTML = '<i style="background:var(--muted)"></i><span>Enregistrement…</span>';
-    else el.innerHTML = '<i style="background:var(--danger)"></i><span>Stockage indisponible dans ce navigateur, les modifications seront perdues à la fermeture</span>';
-  }
-
-  /* ===== Graphique ===== */
-  const svg = $('chart');
-  let mode = 'v', hoverI = -1, geo = null;
-  function drawChart(){
-    const W = svg.clientWidth || 800, H = svg.clientHeight || 300;
-    const m = { l: 40, r: 40, t: 14, b: 30 };
-    const iw = W - m.l - m.r, ih = H - m.t - m.b;
-    const vTop = Math.max(8, Math.ceil(Math.max(...cur.segs.map(s => s.v)) / 2) * 2);
-    const pTop = Math.max(8, Math.ceil(Math.max(...cur.segs.map(s => s.p)) / 2) * 2);
-    const bw = iw / N, geoSeg = cur.minutes / N;
-    geo = { m, iw, ih, vTop, pTop, bw };
-    const yV = v => m.t + ih - v / vTop * ih, yP = p => m.t + ih - p / pTop * ih;
+  /* ===================== Graphiques ===================== */
+  function profileSvg(segs, o = {}){
+    const W = o.W || 340, H = o.H || 120, axisH = o.minutes ? 16 : 0, base = H - axisH - 2;
+    const bw = W / N, vTop = Math.max(6, ...segs.map(s => s.v)) * 1.08, pTop = Math.max(6, ...segs.map(s => s.p)) * 1.15;
+    const pad = o.pad ?? Math.min(3, bw * .14);
+    const yP = p => base - p / pTop * (base - 4);
     let g = '';
-    const ticks = 4;
-    for (let k = 0; k <= ticks; k++){
-      const y = m.t + ih - k / ticks * ih;
-      g += `<line x1="${m.l}" x2="${m.l + iw}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1"/>`;
-      g += `<text x="${m.l - 8}" y="${y + 4}" text-anchor="end" font-size="11" fill="var(--speed)">${f0.format(vTop * k / ticks)}</text>`;
-      g += `<text x="${m.l + iw + 8}" y="${y + 4}" text-anchor="start" font-size="11" fill="var(--grade)">${f0.format(pTop * k / ticks)}</text>`;
-    }
-    g += `<text x="${m.l - 8}" y="${m.t - 2}" text-anchor="end" font-size="10" fill="var(--muted)"></text>`;
-    cur.segs.forEach((s, i) => {
-      const x = m.l + i * bw, y = yV(s.v), pad = Math.min(4, bw * .14);
-      const on = i === hoverI;
-      if (on) g += `<rect x="${x}" y="${m.t}" width="${bw}" height="${ih}" fill="var(--surface-2)"/>`;
-      g += `<rect x="${x + pad}" y="${y}" width="${bw - pad * 2}" height="${m.t + ih - y}" rx="3" fill="var(--speed)" opacity="${on ? 1 : .82}"/>`;
-      if (bw > 30 && m.t + ih - y > 22){
-        // Valeur dans la barre, en bas ou en haut : on évite le point de pente
-        const cy = yP(s.p), low = m.t + ih - 8, high = y + 16;
-        const ly = Math.abs(cy - (low - 4)) > 14 ? low : (Math.abs(cy - (high - 4)) > 14 && high < low - 14 ? high : null);
-        if (ly !== null) g += `<text x="${x + bw / 2}" y="${ly}" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">${f1.format(s.v)}</text>`;
-      }
-      const every = bw >= 40 ? 1 : bw >= 22 ? 2 : 3;
-      if ((i + 1) % every === 0) g += `<text x="${x + bw / 2}" y="${H - 10}" text-anchor="middle" font-size="11" fill="var(--muted)">${mmss(geoSeg * (i + 1))}</text>`;
+    if (o.grid) for (let k = 1; k <= 3; k++){ const y = base - k / 3 * (base - 4); g += `<line x1="0" x2="${W}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--line)" stroke-width="1"/>`; }
+    segs.forEach((s, i) => {
+      const h = Math.max(1, s.v / vTop * (base - 4)), x = i * bw;
+      let op = .85;
+      if (o.done != null) op = i < o.done ? .3 : i === o.done ? 1 : .55;
+      else if (o.hl === i) op = 1;
+      if (o.hl === i) g += `<rect x="${x.toFixed(1)}" y="0" width="${bw.toFixed(1)}" height="${base}" fill="var(--speed-soft)"/>`;
+      g += `<rect x="${(x + pad).toFixed(1)}" y="${(base - h).toFixed(1)}" width="${Math.max(1, bw - pad * 2).toFixed(1)}" height="${h.toFixed(1)}" rx="${o.r ?? 2}" fill="var(--speed)" opacity="${op}"/>`;
     });
-    const pts = cur.segs.map((s, i) => `${m.l + i * bw + bw / 2},${yP(s.p)}`);
-    g += `<polyline points="${pts.join(' ')}" fill="none" stroke="var(--grade)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
-    cur.segs.forEach((s, i) => {
-      const cx = m.l + i * bw + bw / 2, cy = yP(s.p);
-      g += `<circle cx="${cx}" cy="${cy}" r="${i === hoverI ? 5.5 : 3.5}" fill="var(--surface)" stroke="var(--grade)" stroke-width="2"/>`;
-    });
-    if (hoverI >= 0){
-      const s = cur.segs[hoverI], x = m.l + hoverI * bw + bw / 2;
-      const tw = 128, tx = clamp(x - tw / 2, m.l, m.l + iw - tw);
-      g += `<g><rect x="${tx}" y="${m.t + 2}" width="${tw}" height="40" rx="7" fill="var(--ink)"/>
-        <text x="${tx + 10}" y="${m.t + 18}" font-size="11.5" fill="var(--bg)" font-weight="600">${mmss(geoSeg * hoverI)} → ${mmss(geoSeg * (hoverI + 1))}</text>
-        <text x="${tx + 10}" y="${m.t + 34}" font-size="11.5" fill="var(--bg)">${f1.format(s.v)} km/h · ${f1.format(s.p).replace(/,0$/, '')} %</text></g>`;
+    if (!o.noLine){
+      const pts = segs.map((s, i) => `${(i * bw + bw / 2).toFixed(1)},${yP(s.p).toFixed(1)}`).join(' ');
+      g += `<polyline points="${pts}" fill="none" stroke="var(--grade)" stroke-width="${o.lw ?? 2}" stroke-linejoin="round" stroke-linecap="round"/>`;
+      if (o.dots) segs.forEach((s, i) => { g += `<circle cx="${(i * bw + bw / 2).toFixed(1)}" cy="${yP(s.p).toFixed(1)}" r="${o.hl === i ? 4.5 : 2.6}" fill="var(--surface)" stroke="var(--grade)" stroke-width="1.8"/>`; });
     }
-    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-    svg.innerHTML = g;
-  }
-  function segFromEvent(e){
-    const r = svg.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-    const { m, iw, ih, vTop, pTop, bw } = geo;
-    const i = clamp(Math.floor((x - m.l) / bw), 0, N - 1);
-    const frac = clamp((m.t + ih - y) / ih, 0, 1);
-    return { i, v: frac * vTop, p: frac * pTop, inside: x >= m.l && x <= m.l + iw };
-  }
-  let dragging = false;
-  function applyDrag(e){
-    const s = segFromEvent(e);
-    if (mode === 'v') cur.segs[s.i].v = Math.round(clamp(s.v, VMIN, VMAX) * 10) / 10;
-    else cur.segs[s.i].p = Math.round(clamp(s.p, PMIN, PMAX) * 2) / 2;
-    const el = $(mode + s.i);
-    if (el) el.value = fmt(mode, cur.segs[s.i][mode]);
-    hoverI = s.i; hlRow(s.i); touch();
-  }
-  svg.addEventListener('pointerdown', e => { dragging = true; svg.setPointerCapture(e.pointerId); applyDrag(e); });
-  svg.addEventListener('pointermove', e => {
-    if (dragging) return applyDrag(e);
-    const s = segFromEvent(e); const h = s.inside ? s.i : -1;
-    if (h !== hoverI){ hoverI = h; hlRow(h); drawChart(); }
-  });
-  const end = () => { dragging = false; };
-  svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end);
-  svg.addEventListener('pointerleave', () => { if (!dragging){ hoverI = -1; hlRow(-1); drawChart(); } });
-  function hlRow(i){ [...$('rows').children].forEach((tr, k) => tr.classList.toggle('hl', k === i)); }
-  document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
-    mode = b.dataset.mode;
-    document.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', x === b));
-  }));
-  new ResizeObserver(() => drawChart()).observe(svg);
-
-  /* ===== Modales ===== */
-  const modal = $('modal');
-  function openModal(html, onReady){ modal.innerHTML = `<div class="modal" role="dialog" aria-modal="true">${html}</div>`; modal.hidden = false; onReady && onReady(modal); }
-  function closeModal(){ modal.hidden = true; modal.innerHTML = ''; }
-  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.hidden) closeModal(); });
-
-  $('btnNew').addEventListener('click', () => {
-    let base = 'flat';
-    openModal(`<h3>Nouveau programme</h3>
-      <div class="field"><label class="eyebrow" for="newName">Nom du programme</label>
-      <input type="text" id="newName" maxlength="60" placeholder="Ex. Fractionné du mardi"></div>
-      <div class="field"><span class="eyebrow">Point de départ</span>
-        <div class="choices">
-          <button type="button" class="choice" data-b="flat" aria-pressed="true"><b>Profil plat</b><span>18 × 4,0 km/h, pente 0 %</span></button>
-          <button type="button" class="choice" data-b="copy" aria-pressed="false"><b>Copie de l'actuel</b><span>${esc(cur.name)}</span></button>
-        </div></div>
-      <span class="err" id="newErr" hidden>Donnez un nom au programme pour l'enregistrer.</span>
-      <div class="modal-actions"><button class="btn" type="button" data-x>Annuler</button><button class="btn primary" type="button" data-ok>Créer</button></div>`,
-      m => {
-        const inp = m.querySelector('#newName'); inp.focus();
-        m.querySelectorAll('.choice').forEach(c => c.addEventListener('click', () => {
-          base = c.dataset.b; m.querySelectorAll('.choice').forEach(x => x.setAttribute('aria-pressed', x === c));
-        }));
-        m.querySelector('[data-x]').onclick = closeModal;
-        const ok = () => {
-          const name = inp.value.trim();
-          if (!name){ m.querySelector('#newErr').hidden = false; inp.focus(); return; }
-          const p = base === 'copy'
-            ? { ...JSON.parse(JSON.stringify(cur)), id: uid(), name, updated: Date.now() }
-            : { id: uid(), name, minutes: cur.minutes, weight: cur.weight, updated: Date.now(), segs: Array.from({ length: N }, () => ({ v: 4, p: 0 })) };
-          delete p.example;
-          progs.unshift(p); cur = p; save(); renderAll(); closeModal(); toast('Programme créé');
-        };
-        m.querySelector('[data-ok]').onclick = ok;
-        inp.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
+    if (o.minutes){
+      [0, .25, .5, .75, 1].forEach((f, k) => {
+        g += `<text x="${(f * W).toFixed(0)}" y="${H - 3}" font-size="10.5" fill="var(--muted)" font-family="Barlow, system-ui, sans-serif" text-anchor="${k === 0 ? 'start' : k === 4 ? 'end' : 'middle'}">${mmss(o.minutes * f)}</text>`;
       });
-  });
-  $('btnDup').addEventListener('click', () => {
-    const p = { ...JSON.parse(JSON.stringify(cur)), id: uid(), name: cur.name + ' (copie)', updated: Date.now() };
-    delete p.example;
-    progs.splice(progs.indexOf(cur) + 1, 0, p); cur = p; save(); renderAll(); toast('Programme dupliqué');
-    $('progName').focus(); $('progName').select();
-  });
-  $('btnDel').addEventListener('click', () => {
-    openModal(`<h3>Supprimer ce programme ?</h3><p>« ${esc(cur.name)} » sera effacé de ce navigateur. Cette action est définitive.</p>
-      <div class="modal-actions"><button class="btn" type="button" data-x>Annuler</button><button class="btn primary" style="background:var(--danger);border-color:var(--danger);color:#fff" type="button" data-ok>Supprimer</button></div>`,
-      m => {
-        m.querySelector('[data-x]').onclick = closeModal;
-        m.querySelector('[data-ok]').onclick = () => {
-          const name = cur.name;
-          progs = progs.filter(p => p !== cur);
-          if (!progs.length) progs = [{ id: uid(), name: 'Nouveau programme', minutes: 40, weight: cur.weight, updated: Date.now(), segs: Array.from({ length: N }, () => ({ v: 4, p: 0 })) }];
-          cur = progs[0]; save(); renderAll(); closeModal(); toast(`« ${name} » supprimé`);
-        };
-      });
-  });
+    }
+    return `<svg viewBox="0 0 ${W} ${H}" ${o.cls ? `class="${o.cls}"` : ''} aria-hidden="true">${g}</svg>`;
+  }
+  const miniSvg = segs => profileSvg(segs, { W: 92, H: 36, pad: .8, lw: 1.6, r: 1 });
 
-  /* ===== Création automatique =====
-     On règle une seule « intensité » k de 0 à 2 :
-     de 0 à 1 la vitesse monte jusqu'au maximum du mode, de 1 à 2 c'est la pente qui monte.
-     Une recherche par dichotomie trouve le k qui donne les kcal visées (formule Excel). */
-  const MODES = {
-    walk: { label: 'Marche', vmax: 5.8, pmax: 15, warm: [3.6, 4.2], cool: [4.2, 3.6], hLo: 4.6, lLo: 3.8, lHi: 4.8 },
-    run:  { label: 'Course', vmax: 11,  pmax: 15, warm: [5.0, 6.5], cool: [6.5, 5.0], hLo: 8.0, lLo: 6.5, lHi: 8.5 }
-  };
-  const VARIANTS = {
-    intervals: { label: 'Intervalles', hint: 'rapide / récup' },
-    pyramid:   { label: 'Pyramide',    hint: 'monte puis descend' },
-    steady:    { label: 'Régulier',    hint: 'effort constant' }
-  };
+  /* ===================== Création automatique ===================== */
+  // Profil calé sur la vitesse max réglée : échauffement, récup et retour au calme en % de cette vitesse.
+  function modeCfg(mode){
+    if (mode === 'run'){
+      const m = settings.runMax;
+      return { label: 'Course', vmax: m, pmax: PMAX, warm: [.455 * m, .59 * m], cool: [.59 * m, .455 * m], hLo: .727 * m, lLo: .59 * m, lHi: .773 * m };
+    }
+    const m = settings.walkMax;
+    return { label: 'Marche', vmax: m, pmax: PMAX, warm: [.62 * m, .724 * m], cool: [.724 * m, .62 * m], hLo: .793 * m, lLo: .655 * m, lHi: .83 * m };
+  }
+  const VARIANTS = { intervals: 'Intervalles', pyramid: 'Pyramide', steady: 'Régulier' };
   function buildAuto(o, k){
-    const c = MODES[o.mode];
-    const s = Math.min(k, 1), g = Math.max(0, k - 1);
-    const h = c.hLo + (c.vmax - c.hLo) * s;
-    const l = c.lLo + (c.lHi - c.lLo) * s;
-    const P = 1 + (c.pmax - 1) * g;
+    const c = modeCfg(o.type), s = Math.min(k, 1), g = Math.max(0, k - 1);
+    const h = c.hLo + (c.vmax - c.hLo) * s, l = c.lLo + (c.lHi - c.lLo) * s, P = 1 + (c.pmax - 1) * g;
     const main = [];
     for (let i = 0; i < 14; i++){
       let v, p;
-      if (o.variant === 'intervals'){
-        const hi = i % 2 === 1; v = hi ? h : l; p = hi ? P : P * 0.5;
-      } else if (o.variant === 'pyramid'){
-        const f = 1 - Math.abs(i - 6.5) / 6.5; v = l + (h - l) * f; p = P * (0.3 + 0.7 * f);
-      } else {
-        v = l + (h - l) * 0.8; p = P * (i % 4 < 2 ? 1 : 0.75);
-      }
+      if (o.variant === 'intervals'){ const hi = i % 2 === 1; v = hi ? h : l; p = hi ? P : P * .5; }
+      else if (o.variant === 'pyramid'){ const f = 1 - Math.abs(i - 6.5) / 6.5; v = l + (h - l) * f; p = P * (.3 + .7 * f); }
+      else { v = l + (h - l) * .8; p = P * (i % 4 < 2 ? 1 : .75); }
       main.push({ v, p });
     }
-    const segs = [
-      { v: c.warm[0], p: 0 }, { v: c.warm[1], p: Math.min(1, P) },
-      ...main,
-      { v: c.cool[0], p: Math.min(1, P) }, { v: c.cool[1], p: 0 }
-    ];
-    return segs.map(x => ({ v: Math.round(clamp(x.v, VMIN, c.vmax) * 10) / 10, p: Math.round(clamp(x.p, PMIN, c.pmax)) }));
+    const segs = [{ v: c.warm[0], p: 0 }, { v: c.warm[1], p: Math.min(1, P) }, ...main, { v: c.cool[0], p: Math.min(1, P) }, { v: c.cool[1], p: 0 }];
+    return segs.map(x => ({ v: r1(clamp(x.v, VMIN, c.vmax)), p: Math.round(clamp(x.p, PMIN, c.pmax)) }));
   }
   function generateAuto(o){
-    const kc = segs => compute({ minutes: o.minutes, weight: o.weight, segs }).kcal;
-    const s0 = buildAuto(o, 0), s2 = buildAuto(o, 2);
-    const min = kc(s0), max = kc(s2);
+    const kc = segs => compute({ minutes: o.minutes, segs }).kcal;
+    const s0 = buildAuto(o, 0), s2 = buildAuto(o, 2), min = kc(s0), max = kc(s2);
     if (o.kcal >= max) return { segs: s2, kcal: max, status: o.kcal > max * 1.02 ? 'high' : 'ok', min, max };
-    if (o.kcal <= min) return { segs: s0, kcal: min, status: o.kcal < min * 0.98 ? 'low' : 'ok', min, max };
+    if (o.kcal <= min) return { segs: s0, kcal: min, status: o.kcal < min * .98 ? 'low' : 'ok', min, max };
     let lo = 0, hi = 2;
     for (let n = 0; n < 40; n++){ const mid = (lo + hi) / 2; if (kc(buildAuto(o, mid)) < o.kcal) lo = mid; else hi = mid; }
     const a = buildAuto(o, lo), b = buildAuto(o, hi);
     const segs = Math.abs(kc(a) - o.kcal) <= Math.abs(kc(b) - o.kcal) ? a : b;
     return { segs, kcal: kc(segs), status: 'ok', min, max };
   }
-  function previewSvg(segs){
-    const W = 560, H = 120, m = { l: 4, r: 4, t: 8, b: 4 }, iw = W - m.l - m.r, ih = H - m.t - m.b, bw = iw / N;
-    const vTop = Math.max(6, ...segs.map(s => s.v)) * 1.05, pTop = Math.max(6, ...segs.map(s => s.p)) * 1.1;
-    let g = '';
-    segs.forEach((s, i) => {
-      const bh = s.v / vTop * ih, x = m.l + i * bw;
-      g += `<rect x="${(x + 2).toFixed(1)}" y="${(m.t + ih - bh).toFixed(1)}" width="${(bw - 4).toFixed(1)}" height="${bh.toFixed(1)}" rx="3" fill="var(--speed)" opacity=".85"/>`;
-    });
-    const pts = segs.map((s, i) => `${(m.l + i * bw + bw / 2).toFixed(1)},${(m.t + ih - s.p / pTop * ih).toFixed(1)}`).join(' ');
-    g += `<polyline points="${pts}" fill="none" stroke="var(--grade)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
-    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${g}</svg>`;
-  }
-  // Maintien appuyé = répétition (boutons + / − de la modale)
-  function holdRepeat(btn, fn){
-    let t = null, iv = null;
-    const stop = () => { clearTimeout(t); clearInterval(iv); t = iv = null; };
-    btn.style.touchAction = 'manipulation';
-    btn.addEventListener('pointerdown', e => { e.preventDefault(); fn(); stop(); t = setTimeout(() => { iv = setInterval(fn, 80); }, 380); });
-    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, stop));
-    btn.addEventListener('click', e => { if (e.detail === 0) fn(); });
-  }
-  let autoPrefs = { minutes: 40, kcal: 400, mode: 'walk', variant: 'intervals' };
-  try { Object.assign(autoPrefs, JSON.parse(localStorage.getItem(KEY + '.auto') || '{}')); } catch(e){}
 
-  $('btnAuto').addEventListener('click', () => {
-    const o = { ...autoPrefs, weight: cur.weight };
-    let res = null, nameTouched = false;
-    const autoName = () => `${MODES[o.mode].label} ${VARIANTS[o.variant].label.toLowerCase()} ${o.minutes} min · ${o.kcal} kcal`;
-    const seg2 = (key, map) => Object.entries(map).map(([k, v]) =>
-      `<button type="button" data-${key}="${k}" aria-pressed="${o[key] === k}">${v.label}${v.hint ? `<small>${v.hint}</small>` : ''}</button>`).join('');
-    const stepper = (id, label, unit) => `<div class="field"><label class="eyebrow" for="${id}">${label}</label>
-      <div class="stepper"><button type="button" data-s="${id}" data-d="-1" aria-label="Diminuer">−</button>
-      <input id="${id}" type="text" inputmode="numeric"><button type="button" data-s="${id}" data-d="1" aria-label="Augmenter">+</button>
-      <span class="unit">${unit}</span></div></div>`;
-    openModal(`<h3>Création automatique</h3>
-      <p>Donnez la durée, les kcal à brûler et le type de séance. L'appli calcule les 18 paliers ; vous pourrez tout ajuster ensuite.</p>
-      <div class="auto-grid">
-        ${stepper('aMin', 'Temps total', 'min')}
-        ${stepper('aKcal', 'Objectif', 'kcal')}
-        <div class="field"><span class="eyebrow">Type de séance</span><div class="seg2" role="group">${Object.entries(MODES).map(([k, v]) =>
-          `<button type="button" data-amode="${k}" aria-pressed="${o.mode === k}">${v.label}<small>max ${f1.format(v.vmax)} km/h</small></button>`).join('')}</div></div>
-        ${stepper('aKg', 'Poids', 'kg')}
-      </div>
-      <div class="field"><span class="eyebrow">Forme du programme</span><div class="seg2" role="group">${seg2('variant', VARIANTS)}</div></div>
-      <div class="preview">
-        <div id="pvChart"></div>
-        <div class="pv-stats">
-          <div><span>Dépense</span><b id="pvKcal"></b></div>
-          <div><span>Distance</span><b id="pvDist"></b></div>
-          <div><span>Vitesse max</span><b id="pvV" style="color:var(--speed)"></b></div>
-          <div><span>Pente max</span><b id="pvP" style="color:var(--grade)"></b></div>
-        </div>
-        <div class="pv-status" id="pvStatus"></div>
-      </div>
-      <div class="field"><label class="eyebrow" for="aName">Nom du programme</label><input type="text" id="aName" maxlength="60"></div>
-      <div class="modal-actions"><button class="btn" type="button" data-x>Annuler</button><button class="btn primary" type="button" data-ok>Créer ce programme</button></div>`,
-      m => {
-        m.querySelector('.modal').classList.add('wide');
-        const refresh = () => {
-          $('aMin').value = f0.format(o.minutes); $('aKcal').value = f0.format(o.kcal); $('aKg').value = String(o.weight).replace('.', ',');
-          if (!nameTouched) $('aName').value = autoName();
-          res = generateAuto(o);
-          const c = compute({ minutes: o.minutes, weight: o.weight, segs: res.segs });
-          $('pvChart').innerHTML = previewSvg(res.segs);
-          $('pvKcal').textContent = `${f0.format(res.kcal)} kcal`;
-          $('pvDist').textContent = `${f2.format(c.dist)} km`;
-          $('pvV').textContent = `${f1.format(Math.max(...res.segs.map(s => s.v)))} km/h`;
-          $('pvP').textContent = `${f0.format(Math.max(...res.segs.map(s => s.p)))} %`;
-          const st = $('pvStatus'), mode = MODES[o.mode].label.toLowerCase();
-          st.className = 'pv-status' + (res.status === 'ok' ? '' : ' warn');
-          st.innerHTML = '<i></i><span>' + (res.status === 'ok'
-            ? `Objectif atteint : ${f0.format(res.kcal)} kcal pour ${f0.format(o.kcal)} visées.`
-            : res.status === 'high'
-              ? `Objectif trop élevé pour ${o.minutes} min en ${mode} : ce programme est au maximum (${f0.format(res.max)} kcal). Allongez la durée${o.mode === 'walk' ? ' ou passez en course' : ''}.`
-              : `Objectif bas pour ${o.minutes} min en ${mode} : même au plus doux, la séance brûle ${f0.format(res.min)} kcal. Réduisez la durée${o.mode === 'run' ? ' ou passez en marche' : ''}.`) + '</span>';
-          try { localStorage.setItem(KEY + '.auto', JSON.stringify({ minutes: o.minutes, kcal: o.kcal, mode: o.mode, variant: o.variant })); } catch(e){}
-        };
-        const steps = { aMin: [1, 5, 240, 'minutes'], aKcal: [10, 50, 3000, 'kcal'], aKg: [1, 30, 250, 'weight'] };
-        m.querySelectorAll('[data-s]').forEach(b => holdRepeat(b, () => {
-          const [st, lo, hi, key] = steps[b.dataset.s];
-          o[key] = clamp(Math.round((o[key] + st * +b.dataset.d) / st) * st, lo, hi); refresh();
-        }));
-        Object.entries(steps).forEach(([id, [st, lo, hi, key]]) => $(id).addEventListener('change', e => {
-          const x = num(e.target.value); if (isFinite(x)) o[key] = clamp(key === 'weight' ? Math.round(x * 10) / 10 : Math.round(x), lo, hi); refresh();
-        }));
-        m.querySelectorAll('[data-amode]').forEach(b => b.addEventListener('click', () => {
-          o.mode = b.dataset.amode; m.querySelectorAll('[data-amode]').forEach(x => x.setAttribute('aria-pressed', x === b)); refresh();
-        }));
-        m.querySelectorAll('[data-variant]').forEach(b => b.addEventListener('click', () => {
-          o.variant = b.dataset.variant; m.querySelectorAll('[data-variant]').forEach(x => x.setAttribute('aria-pressed', x === b)); refresh();
-        }));
-        $('aName').addEventListener('input', () => { nameTouched = true; });
-        m.querySelector('[data-x]').onclick = closeModal;
-        m.querySelector('[data-ok]').onclick = () => {
-          const name = $('aName').value.trim() || autoName();
-          const p = { id: uid(), name, minutes: o.minutes, weight: o.weight, updated: Date.now(), segs: res.segs.map(s => ({ ...s })) };
-          progs.unshift(p); cur = p; save(); renderAll(); closeModal(); toast('Programme créé');
-        };
-        refresh();
-      });
+  /* ===================== État de l'interface ===================== */
+  const S = {
+    tab: 'list', view: 'list', detailId: null, filter: 'all',
+    create: Object.assign({ mode: 'auto', minutes: 40, kcal: 400, type: 'walk', variant: 'intervals', name: '', nameTouched: false,
+      mMinutes: 40, mStart: 'flat', mCopy: null, mName: '' }, ls.get(KEY + '.auto', {}), { nameTouched: false, name: '' }),
+    edit: null, res: null
+  };
+  if (!['walk', 'run'].includes(S.create.type)) S.create.type = S.create.mode === 'run' ? 'run' : 'walk';
+  if (!['auto', 'manual'].includes(S.create.mode)) S.create.mode = 'auto';
+  const saveCreatePrefs = () => { const c = S.create; ls.set(KEY + '.auto', { mode: c.mode, minutes: c.minutes, kcal: c.kcal, type: c.type, variant: c.variant, mMinutes: c.mMinutes, mStart: c.mStart }); };
+
+  /* ===================== Navigation ===================== */
+  const TABS = [
+    ['list', 'Programmes', '<path d="M4 6h16M4 12h16M4 18h10"/>'],
+    ['create', 'Créer', '<path d="M12 5v14M5 12h14"/>'],
+    ['session', 'Séance', '<path d="M8 5v14l11-7z"/>'],
+    ['settings', 'Réglages', '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M2.5 12h3M18.5 12h3M4.6 19.4l2.1-2.1M17.3 6.7l2.1-2.1"/>']
+  ];
+  function renderNav(){
+    const nav = $('nav');
+    nav.hidden = S.view === 'edit';
+    nav.innerHTML = TABS.map(([k, l, p]) => `<button type="button" data-tab="${k}" class="${S.tab === k ? 'on' : ''}" aria-current="${S.tab === k ? 'page' : 'false'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>${l}</button>`).join('');
+  }
+  $('nav').addEventListener('click', e => {
+    const b = e.target.closest('[data-tab]'); if (!b) return;
+    const t = b.dataset.tab;
+    if (t === 'list' && S.tab === 'list' && S.view === 'detail'){ go('list'); return; }
+    S.tab = t; go(t);
+  });
+  function go(view, opts = {}){
+    // Une mise à jour arrivée pendant une modification s'installe dès qu'on quitte l'éditeur
+    if (pendingReload && view !== 'edit' && !rs){ reloadForUpdate(); return; }
+    if (view === 'detail') S.detailId = opts.id;
+    if (['list', 'detail'].includes(view)) S.tab = 'list';
+    else if (view !== 'edit') S.tab = view;
+    S.view = view;
+    if ((view === 'detail' || view === 'edit') && opts.push !== false){ try { history.pushState({ v: view }, ''); } catch(e){} }
+    render();
+    const sc = document.querySelector('#view .scroll'); if (sc && !opts.keepScroll) sc.scrollTop = 0;
+  }
+  window.addEventListener('popstate', () => {
+    if (!$('sheet').hidden){ closeSheet(); return; }
+    if (S.view === 'edit'){ cancelEdit(true); return; }
+    if (S.view === 'detail'){ go('list', { push: false }); }
   });
 
-  /* ===== Export / import (passer d'un appareil à l'autre) ===== */
-  $('btnExport').addEventListener('click', () => {
-    const data = { app: 'sole-f63-programmes', version: 1, exported: new Date().toISOString(), programs: progs };
+  function render(){
+    renderNav();
+    const v = $('view');
+    if (S.view === 'list') v.innerHTML = viewList();
+    else if (S.view === 'detail') v.innerHTML = viewDetail();
+    else if (S.view === 'create') v.innerHTML = viewCreate();
+    else if (S.view === 'edit') v.innerHTML = viewEdit();
+    else if (S.view === 'session') v.innerHTML = viewSession();
+    else if (S.view === 'settings') v.innerHTML = viewSettings();
+    if (S.view === 'create') refreshCreate();
+    if (S.view === 'edit') refreshEdit();
+    if (S.view === 'settings') askVersion();
+  }
+
+  /* ===================== Vue : Programmes ===================== */
+  function viewList(){
+    const mine = progs.filter(p => !p.sid).length, seeds = progs.length - mine;
+    let list = progs.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0));
+    if (S.filter === 'mine') list = list.filter(p => !p.sid);
+    if (S.filter === 'seed') list = list.filter(p => p.sid);
+    const chip = (k, l) => `<button type="button" class="chip${S.filter === k ? ' on' : ''}" data-filter="${k}">${l}</button>`;
+    return `<header class="hd"><h1>Programmes</h1><span class="sub">${progs.length} programme${progs.length > 1 ? 's' : ''} · calculés pour ${fp(settings.weight)} kg</span></header>
+      <div class="scroll">
+        <div class="chips">${chip('all', 'Tous')}${chip('mine', `Les miens · ${mine}`)}${chip('seed', `Prédéfinis · ${seeds}`)}</div>
+        ${list.length ? list.map(cardHtml).join('') : `<div class="card empty">Aucun programme ici pour l'instant.<br>Créez-en un avec le bouton ci-dessous.</div>`}
+        <div style="height:70px"></div>
+      </div>
+      <button type="button" class="fab" data-act="new">${ICON.plus}Nouveau programme</button>`;
+  }
+  function cardHtml(p){
+    const c = compute(p), k = kindOf(p);
+    const badge = k === 'auto' ? '<span class="badge mine">Auto</span>' : k === 'user' ? '<span class="badge mine">Perso</span>' : '';
+    return `<button type="button" class="card pcard" data-open="${p.id}"><span class="nm">${esc(p.name)}${badge}</span>${miniSvg(p.segs)}<span class="m">${f0.format(p.minutes)} min · ${f2.format(c.dist)} km · ${f0.format(c.kcal)} kcal</span></button>`;
+  }
+
+  /* ===================== Vue : Fiche ===================== */
+  function viewDetail(){
+    const p = byId(S.detailId);
+    if (!p){ S.view = 'list'; return viewList(); }
+    const c = compute(p);
+    return `<header class="hd">
+        <button type="button" class="back" data-act="back">${ICON.back}Programmes</button>
+        <h1>${esc(p.name)}</h1>
+        <div class="hd-meta"><span class="state ok"><i></i>Enregistré</span></div>
+      </header>
+      <div class="scroll">
+        <div class="card chart">${profileSvg(p.segs, { W: 340, H: 150, minutes: p.minutes, grid: true, dots: true, lw: 2.2 })}</div>
+        <div class="kpis">
+          <div class="kpi"><span>Durée</span><b>${f0.format(p.minutes)}<small>min</small></b></div>
+          <div class="kpi"><span>Distance</span><b>${f2.format(c.dist)}<small>km</small></b></div>
+          <div class="kpi s"><span>Vitesse max</span><b>${f1.format(c.vMax)}<small>km/h</small></b></div>
+          <div class="kpi g"><span>Pente max</span><b>${fp(c.pMax)}<small>%</small></b></div>
+        </div>
+        <div class="small center">${f0.format(c.kcal)} kcal pour ${fp(settings.weight)} kg · 18 paliers de ${durTxt(c.segMin)}</div>
+        <button type="button" class="btn pri" data-act="run">${ICON.play}Lancer la séance</button>
+        <div class="row3">
+          <button type="button" class="btn sm" data-act="edit">Modifier</button>
+          <button type="button" class="btn sm" data-act="dup">Dupliquer</button>
+          <button type="button" class="btn sm" data-act="more" aria-label="Plus d'actions">···</button>
+        </div>
+        <span class="grp-t" style="margin-top:6px">Les 18 paliers</span>
+        <div class="card plist">
+          <div class="ph"><span>Fin</span><span>Pente</span><span>km/h</span><span>km</span><span>kcal</span></div>
+          ${c.rows.map(r => `<div class="pr"><span class="t">${mmss(r.end)}</span><span class="p">${fp(r.p)} %</span><span class="v">${f1.format(r.v)}</span><span class="c">${f2.format(r.distCum)}</span><span class="c">${f0.format(r.kcalCum)}</span></div>`).join('')}
+        </div>
+        <span class="small center">Distance et kcal cumulées à la fin de chaque palier.</span>
+      </div>`;
+  }
+
+  /* ===================== Vue : Créer ===================== */
+  const stepHtml = (key, val, unit) => `<div class="step"><button type="button" data-hold="${key}:-1" aria-label="Diminuer">−</button><b id="st-${key}">${val}<small>${unit}</small></b><button type="button" data-hold="${key}:1" aria-label="Augmenter">+</button></div>`;
+  const segBtns = (attr, cur, items) => items.map(([k, l]) => `<button type="button" data-${attr}="${k}" aria-pressed="${cur === k}">${l}</button>`).join('');
+  function viewCreate(){
+    const c = S.create;
+    const head = `<header class="hd"><h1>Créer</h1></header>`;
+    const seg = `<div class="seg" role="group">${segBtns('cmode', c.mode, [['auto', 'Automatique'], ['manual', 'Manuel']])}</div>`;
+    if (c.mode === 'auto'){
+      return head + `<div class="scroll">${seg}
+        <div class="card">
+          <div class="field"><span class="lab">Durée</span>${stepHtml('cmin', c.minutes, 'min')}</div>
+          <div class="field"><span class="lab">Objectif</span>${stepHtml('ckcal', c.kcal, 'kcal')}</div>
+          <div class="field"><span class="lab">Type<small id="c-max"></small></span><div class="mini-seg">${segBtns('ctype', c.type, [['walk', 'Marche'], ['run', 'Course']])}</div></div>
+          <div class="field form-forme"><span class="lab">Forme</span><div class="mini-seg">${segBtns('cvar', c.variant, Object.entries(VARIANTS))}</div></div>
+        </div>
+        <div class="card pv">
+          <div id="pv-chart"></div>
+          <div class="pv-st">
+            <div><span>Dépense</span><b id="pv-k"></b></div><div><span>km</span><b id="pv-d"></b></div>
+            <div><span>V. max</span><b id="pv-v" style="color:var(--speed)"></b></div><div><span>Pente max</span><b id="pv-p" style="color:var(--grade)"></b></div>
+          </div>
+          <div class="status-line" id="pv-st"></div>
+        </div>
+        <div class="card namef"><label for="c-name">Nom du programme</label><input class="txt" id="c-name" type="text" maxlength="60" autocomplete="off"></div>
+      </div>
+      <div class="foot">
+        <div class="two"><button type="button" class="btn sm" data-act="c-adjust">Ajuster</button><button type="button" class="btn pri sm" data-act="c-save">Enregistrer</button></div>
+        <div class="small center">ou <button type="button" class="lnk" data-act="c-try">lancer sans enregistrer</button></div>
+      </div>`;
+    }
+    const opts = progs.map(p => `<option value="${p.id}"${p.id === c.mCopy ? ' selected' : ''}>${esc(p.name)}</option>`).join('');
+    return head + `<div class="scroll">${seg}
+        <div class="card">
+          <div class="field"><span class="lab">Durée</span>${stepHtml('mmin', c.mMinutes, 'min')}</div>
+          <div class="field"><span class="lab">Point de départ</span><div class="mini-seg">${segBtns('mstart', c.mStart, [['flat', 'Profil plat'], ['copy', 'Copie']])}</div></div>
+          ${c.mStart === 'copy' ? `<div class="field" style="flex-direction:column;align-items:stretch"><label class="lab" for="m-copy">Programme à copier</label><select class="txt" id="m-copy">${opts}</select></div>` : ''}
+        </div>
+        <div class="card namef"><label for="m-name">Nom du programme</label><input class="txt" id="m-name" type="text" maxlength="60" placeholder="Ex. Fractionné du mardi" value="${esc(c.mName)}" autocomplete="off"></div>
+        <p class="small" style="margin:0 4px">${c.mStart === 'flat' ? 'Les 18 paliers démarrent à 4,0 km/h et 0 % de pente.' : 'Les paliers du programme choisi sont repris, avec la durée indiquée ci-dessus.'} Vous les réglez à l'écran suivant, puis vous enregistrez.</p>
+      </div>
+      <div class="foot"><button type="button" class="btn pri" data-act="m-go">Composer les paliers</button></div>`;
+  }
+  const autoName = () => `${modeCfg(S.create.type).label} ${VARIANTS[S.create.variant].toLowerCase()} ${S.create.minutes} min · ${S.create.kcal} kcal`;
+  function refreshCreate(){
+    const c = S.create;
+    if (c.mode !== 'auto'){ const mm = $('st-mmin'); if (mm) mm.innerHTML = `${c.mMinutes}<small>min</small>`; return; }
+    $('st-cmin').innerHTML = `${c.minutes}<small>min</small>`;
+    $('st-ckcal').innerHTML = `${c.kcal}<small>kcal</small>`;
+    $('c-max').textContent = `max ${f1.format(modeCfg(c.type).vmax)} km/h · Réglages`;
+    if (!c.nameTouched){ c.name = autoName(); }
+    const ni = $('c-name'); if (ni && document.activeElement !== ni) ni.value = c.name;
+    const res = S.res = generateAuto({ minutes: c.minutes, kcal: c.kcal, type: c.type, variant: c.variant });
+    const cc = compute({ minutes: c.minutes, segs: res.segs });
+    $('pv-chart').innerHTML = profileSvg(res.segs, { W: 340, H: 96, dots: true, lw: 2 });
+    $('pv-k').textContent = f0.format(res.kcal);
+    $('pv-d').textContent = f2.format(cc.dist);
+    $('pv-v').textContent = f1.format(cc.vMax);
+    $('pv-p').textContent = fp(cc.pMax) + ' %';
+    const st = $('pv-st'), lab = modeCfg(c.type).label.toLowerCase();
+    st.className = 'status-line' + (res.status === 'ok' ? '' : ' warn');
+    const diff = Math.round(Math.abs(res.kcal - c.kcal));
+    st.innerHTML = '<i></i><span>' + (res.status === 'ok'
+      ? (diff <= 1 ? 'Objectif atteint.' : `Objectif atteint à ${diff} kcal près.`)
+      : res.status === 'high'
+        ? `Trop élevé pour ${c.minutes} min en ${lab} : ce programme est au maximum (${f0.format(res.max)} kcal). Allongez la durée${c.type === 'walk' ? ' ou passez en course' : ''}.`
+        : `Objectif bas pour ${c.minutes} min en ${lab} : même au plus doux, la séance brûle ${f0.format(res.min)} kcal. Réduisez la durée${c.type === 'run' ? ' ou passez en marche' : ''}.`) + '</span>';
+    saveCreatePrefs();
+  }
+
+  /* ===================== Vue : Modifier ===================== */
+  function openEditor(prog, o){
+    S.edit = { draft: clone(prog), base: JSON.stringify({ n: prog.name, m: prog.minutes, s: prog.segs }), isNew: !!o.isNew, origin: o.origin || null, returnTo: o.returnTo || 'detail', hl: -1 };
+    go('edit');
+  }
+  function editChanges(){
+    const e = S.edit, b = JSON.parse(e.base), d = e.draft;
+    let n = 0;
+    d.segs.forEach((s, i) => { if (s.v !== b.s[i].v || s.p !== b.s[i].p) n++; });
+    if (d.minutes !== b.m) n++;
+    if (d.name.trim() !== b.n) n++;
+    return n;
+  }
+  function viewEdit(){
+    const e = S.edit, d = e.draft;
+    return `<div class="edhd">
+        <button type="button" class="cancel" data-act="e-cancel">Annuler</button>
+        <span class="t" id="e-title">${esc(d.name)}</span>
+        <button type="button" class="save" data-act="e-save" id="e-save">Enregistrer</button>
+      </div>
+      <div class="scroll" id="e-scroll">
+        <div class="ed-top">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span id="e-state"></span><span class="small">${fp(settings.weight)} kg</span></div>
+          <div class="card chart" style="padding:8px 8px 4px" id="e-chart"></div>
+          <div class="ehead"><span>Fin</span><span>Pente %</span><span>Vitesse km/h</span></div>
+        </div>
+        <div class="card" style="margin-top:-6px">
+          ${d.segs.map((s, i) => `<div class="er" data-row="${i}">
+            <span class="t" id="e-t${i}"></span>
+            <div class="cs p"><button type="button" data-hold="ep${i}:-1" aria-label="Baisser la pente">−</button><input id="ep${i}" data-i="${i}" data-f="p" inputmode="decimal" value="${fp(s.p)}" aria-label="Pente"><button type="button" data-hold="ep${i}:1" aria-label="Monter la pente">+</button></div>
+            <div class="cs v"><button type="button" data-hold="ev${i}:-1" aria-label="Ralentir">−</button><input id="ev${i}" data-i="${i}" data-f="v" inputmode="decimal" value="${f1.format(s.v)}" aria-label="Vitesse"><button type="button" data-hold="ev${i}:1" aria-label="Accélérer">+</button></div>
+          </div>`).join('')}
+        </div>
+        <div class="card">
+          <div class="namef"><label for="e-name">Nom</label><input class="txt" id="e-name" type="text" maxlength="60" value="${esc(d.name)}" autocomplete="off"></div>
+          <div class="field"><span class="lab">Durée totale<small id="e-seg"></small></span>${stepHtml('emin', d.minutes, 'min')}</div>
+        </div>
+      </div>
+      <div class="foot"><div class="tot"><span>Total</span><span id="e-tot"></span></div></div>`;
+  }
+  function refreshEdit(){
+    const e = S.edit, d = e.draft, c = compute(d);
+    c.rows.forEach((r, i) => { const t = $('e-t' + i); if (t) t.textContent = mmss(r.end); });
+    $('e-chart').innerHTML = profileSvg(d.segs, { W: 340, H: 96, dots: true, lw: 2, hl: e.hl });
+    $('e-tot').innerHTML = `<b>${f2.format(c.dist)}</b> km · <b>${f0.format(c.kcal)}</b> kcal · pente moy. <b>${f1.format(c.avgP)}</b> %`;
+    $('st-emin').innerHTML = `${d.minutes}<small>min</small>`;
+    $('e-seg').textContent = `paliers de ${durTxt(c.segMin)}`;
+    $('e-title').textContent = d.name.trim() || 'Sans nom';
+    const n = editChanges();
+    $('e-state').innerHTML = e.isNew
+      ? '<span class="state draft"><i></i>Nouveau, pas encore enregistré</span>'
+      : n ? `<span class="state draft"><i></i>${n} modification${n > 1 ? 's' : ''} non enregistrée${n > 1 ? 's' : ''}</span>`
+          : '<span class="state neutral"><i></i>Aucune modification</span>';
+    $('e-save').disabled = !e.isNew && n === 0;
+  }
+  function setHl(i){ if (!S.edit) return; S.edit.hl = i; document.querySelectorAll('.er').forEach(r => r.classList.toggle('hl', +r.dataset.row === i)); $('e-chart').innerHTML = profileSvg(S.edit.draft.segs, { W: 340, H: 96, dots: true, lw: 2, hl: i }); }
+  function bumpSeg(i, f, dir){
+    const s = S.edit.draft.segs[i], step = f === 'v' ? .1 : 1, [a, b] = f === 'v' ? [VMIN, VMAX] : [PMIN, PMAX];
+    const before = s[f]; s[f] = r1(clamp(before + dir * step, a, b));
+    const el = $('e' + f + i); if (el) el.value = f === 'v' ? f1.format(s[f]) : fp(s[f]);
+    S.edit.hl = i; setHl(i); refreshEdit();
+    return s[f] !== before;
+  }
+  function saveEdit(){
+    const e = S.edit, d = e.draft;
+    d.name = d.name.trim() || 'Sans nom';
+    d.updated = Date.now();
+    delete d.weight;
+    if (e.isNew){
+      d.id = uid(); delete d.sid; if (e.origin) d.origin = e.origin;
+      progs.push(d);
+    } else {
+      const i = progs.findIndex(p => p.id === d.id);
+      if (i >= 0) progs[i] = d; else progs.push(d);
+    }
+    saveProgs();
+    const id = d.id; S.edit = null;
+    try { history.replaceState({ v: 'detail' }, ''); } catch(e){}
+    go('detail', { id, push: false });
+    toast(e.isNew ? 'Programme enregistré' : 'Modifications enregistrées');
+  }
+  function cancelEdit(fromPop){
+    const e = S.edit; if (!e) return;
+    const leave = () => {
+      const back = e.returnTo, id = e.draft.id; S.edit = null; closeSheet();
+      if (back === 'create') go('create'); else go('detail', { id, push: false });
+    };
+    if (e.isNew || editChanges()){
+      if (fromPop){ try { history.pushState({ v: 'edit' }, ''); } catch(err){} }
+      openSheet(`<h3>Abandonner ${e.isNew ? 'ce programme' : 'les modifications'} ?</h3><p>${e.isNew ? "Le programme n'a pas été enregistré." : 'Les changements faits depuis l’ouverture seront perdus.'}</p>
+        <button type="button" class="btn danger fill" data-act="sh-discard">Abandonner</button>
+        <button type="button" class="btn" data-act="sh-close">Continuer à modifier</button>`, m => { m.querySelector('[data-act="sh-discard"]').onclick = leave; });
+      return;
+    }
+    leave();
+  }
+
+  /* ===================== Vue : Séance ===================== */
+  function viewSession(){
+    const p = byId(lastId) || progs.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0))[0];
+    if (!p) return `<header class="hd"><h1>Séance</h1></header><div class="scroll"><div class="card empty">Aucun programme. Créez-en un dans l'onglet Créer.</div></div>`;
+    const c = compute(p);
+    return `<header class="hd"><h1>Séance</h1><span class="sub">${byId(lastId) ? 'Dernier programme lancé' : 'Programme proposé'}</span></header>
+      <div class="scroll">
+        <div class="card sess">
+          <span class="nm">${esc(p.name)}</span>
+          ${profileSvg(p.segs, { W: 340, H: 110, minutes: p.minutes, dots: true, lw: 2 })}
+          <span class="small">${f0.format(p.minutes)} min · ${f2.format(c.dist)} km · ${f0.format(c.kcal)} kcal · max ${f1.format(c.vMax)} km/h et ${fp(c.pMax)} %</span>
+        </div>
+        <button type="button" class="btn pri" data-act="s-run" data-id="${p.id}">${ICON.play}Démarrer</button>
+        <button type="button" class="btn sm" data-act="s-pick">Choisir un autre programme</button>
+        <span class="grp-t" style="margin-top:6px">Sons pendant la séance</span>
+        <div class="tg">${sndBtns()}</div>
+        <span class="small">Réglables aussi pendant la séance. Sur iPhone, désactivez le mode silencieux pour entendre les bips.</span>
+      </div>`;
+  }
+  const sndBtns = () => `<button type="button" data-snd="beep" aria-pressed="${settings.beep}">${ICON.bell}Bips</button><button type="button" data-snd="voice" aria-pressed="${settings.voice}">${ICON.voice}Voix</button>`;
+
+  /* ===================== Vue : Réglages ===================== */
+  function viewSettings(){
+    const sw = (k, l) => `<div class="field"><span class="lab">${l}</span><button type="button" class="sw" role="switch" data-sw="${k}" aria-checked="${settings[k]}" aria-label="${l}"></button></div>`;
+    return `<header class="hd"><h1>Réglages</h1></header>
+      <div class="scroll" style="gap:8px">
+        <span class="grp-t">Profil</span>
+        <div class="card">
+          <div class="field"><span class="lab">Poids</span>${stepHtml('sw', fp(settings.weight), 'kg')}</div>
+          <div class="field"><span class="lab">Marche max</span>${stepHtml('swm', f1.format(settings.walkMax), 'km/h')}</div>
+          <div class="field"><span class="lab">Course max</span>${stepHtml('srm', f1.format(settings.runMax), 'km/h')}</div>
+        </div>
+        <span class="small" style="padding:0 4px">Le poids sert au calcul des kcal de tous les programmes. Les vitesses max servent de plafond à la création automatique.</span>
+        <span class="grp-t" style="margin-top:8px">Sons pendant la séance</span>
+        <div class="card">
+          ${sw('beep', 'Bips avant chaque palier')}
+          ${sw('voice', 'Voix (consignes annoncées)')}
+          <div class="field"><span class="lab">Tester les sons</span><button type="button" class="lnk" data-act="test-snd">Écouter</button></div>
+        </div>
+        <span class="grp-t" style="margin-top:8px">Sauvegarde</span>
+        <div class="card">
+          <div class="field"><span class="lab">Exporter mes programmes</span><button type="button" class="lnk" data-act="export">Exporter</button></div>
+          <div class="field"><span class="lab">Importer un fichier</span><button type="button" class="lnk" data-act="import">Importer</button></div>
+        </div>
+        <input type="file" id="fileImport" accept=".json,application/json" hidden>
+        <span class="grp-t" style="margin-top:8px">Tapis Sole F63</span>
+        <div class="card"><div class="field"><span class="lab">Limites</span><span class="val">0,8 à 18 km/h · 0 à 15 %</span></div></div>
+        <div class="ver" id="appVer" hidden></div>
+      </div>`;
+  }
+
+  /* ===================== Feuilles et toasts ===================== */
+  function openSheet(html, onMount){
+    const sh = $('sheet');
+    sh.innerHTML = `<div class="sh" role="dialog" aria-modal="true"><span class="grab"></span>${html}</div>`;
+    sh.hidden = false;
+    sh.querySelectorAll('[data-act="sh-close"]').forEach(b => b.onclick = closeSheet);
+    onMount && onMount(sh);
+  }
+  function closeSheet(){ const sh = $('sheet'); sh.hidden = true; sh.innerHTML = ''; }
+  $('sheet').addEventListener('click', e => { if (e.target === $('sheet')) closeSheet(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('sheet').hidden) closeSheet(); });
+  let toastT;
+  function toast(t){ const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 2400); }
+
+  function pickSheet(onPick, currentId){
+    openSheet(`<h3>Choisir un programme</h3><div class="pick">${progs.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0)).map(p => {
+      const c = compute(p);
+      return `<button type="button" data-pick="${p.id}" aria-current="${p.id === currentId}"><span class="nm" style="font-weight:600">${esc(p.name)}</span>${miniSvg(p.segs)}<span class="m">${f0.format(p.minutes)} min · ${f2.format(c.dist)} km · ${f0.format(c.kcal)} kcal</span></button>`;
+    }).join('')}</div><button type="button" class="btn" data-act="sh-close">Annuler</button>`, m => {
+      m.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { closeSheet(); onPick(b.dataset.pick); });
+    });
+  }
+  function renameSheet(p){
+    openSheet(`<h3>Renommer</h3><input class="txt" id="rn" type="text" maxlength="60" value="${esc(p.name)}" autocomplete="off">
+      <button type="button" class="btn pri" data-act="rn-ok">Enregistrer</button><button type="button" class="btn" data-act="sh-close">Annuler</button>`, m => {
+      const i = m.querySelector('#rn'); i.focus(); i.select();
+      const ok = () => { p.name = i.value.trim() || p.name; p.updated = Date.now(); saveProgs(); closeSheet(); render(); toast('Programme renommé'); };
+      m.querySelector('[data-act="rn-ok"]').onclick = ok;
+      i.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
+    });
+  }
+  function deleteSheet(p){
+    openSheet(`<h3>Supprimer « ${esc(p.name)} » ?</h3><p>Le programme sera effacé de cet appareil. Cette action est définitive.</p>
+      <button type="button" class="btn danger fill" data-act="del-ok">Supprimer</button><button type="button" class="btn" data-act="sh-close">Annuler</button>`, m => {
+      m.querySelector('[data-act="del-ok"]').onclick = () => {
+        progs = progs.filter(x => x !== p); if (lastId === p.id){ lastId = null; ls.set(KEY + '.last', null); }
+        saveProgs(); closeSheet(); go('list', { push: false }); toast(`« ${p.name} » supprimé`);
+      };
+    });
+  }
+
+  /* ===================== Actions (délégation) ===================== */
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-act],[data-open],[data-filter],[data-cmode],[data-ctype],[data-cvar],[data-mstart],[data-snd],[data-sw]');
+    if (!t || t.closest('#run')) return;
+    if (t.dataset.open){ go('detail', { id: t.dataset.open }); return; }
+    if (t.dataset.filter){ S.filter = t.dataset.filter; render(); return; }
+    if (t.dataset.cmode){ S.create.mode = t.dataset.cmode; saveCreatePrefs(); render(); return; }
+    if (t.dataset.ctype){ S.create.type = t.dataset.ctype; t.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); refreshCreate(); return; }
+    if (t.dataset.cvar){ S.create.variant = t.dataset.cvar; t.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); refreshCreate(); return; }
+    if (t.dataset.mstart){ S.create.mStart = t.dataset.mstart; if (!S.create.mCopy && progs[0]) S.create.mCopy = progs[0].id; saveCreatePrefs(); render(); return; }
+    if (t.dataset.snd){ const k = t.dataset.snd; settings[k] = !settings[k]; saveSettings(); t.setAttribute('aria-pressed', settings[k]); if (k === 'beep' && settings.beep) beepCount(); if (k === 'voice' && settings.voice) say('Voix activée', true); return; }
+    if (t.dataset.sw){ const k = t.dataset.sw; settings[k] = !settings[k]; saveSettings(); t.setAttribute('aria-checked', settings[k]); return; }
+    const a = t.dataset.act, p = byId(S.detailId);
+    switch (a){
+      case 'new': S.tab = 'create'; go('create'); break;
+      case 'back': go('list', { push: false }); break;
+      case 'run': if (p) startRun(p); break;
+      case 'edit': if (p) openEditor(p, { returnTo: 'detail' }); break;
+      case 'dup': if (p){ const d = Object.assign(clone(p), { id: uid(), name: p.name + ' (copie)', updated: Date.now() }); delete d.sid; d.origin = 'user'; progs.push(d); saveProgs(); go('detail', { id: d.id, push: false }); toast('Programme dupliqué'); } break;
+      case 'more': if (p) openSheet(`<h3>${esc(p.name)}</h3>
+          <button type="button" class="btn" data-act="sh-rename">Renommer</button>
+          <button type="button" class="btn danger" data-act="sh-delete">Supprimer</button>
+          <button type="button" class="btn" data-act="sh-close">Annuler</button>`, m => {
+            m.querySelector('[data-act="sh-rename"]').onclick = () => renameSheet(p);
+            m.querySelector('[data-act="sh-delete"]').onclick = () => deleteSheet(p);
+          }); break;
+      case 'c-save': {
+        const c = S.create, d = { id: uid(), origin: 'auto', name: ($('c-name').value.trim() || autoName()), minutes: c.minutes, updated: Date.now(), segs: clone(S.res.segs) };
+        progs.push(d); saveProgs(); c.nameTouched = false; go('detail', { id: d.id }); toast('Programme enregistré'); break;
+      }
+      case 'c-adjust': {
+        const c = S.create;
+        openEditor({ id: null, name: $('c-name').value.trim() || autoName(), minutes: c.minutes, segs: clone(S.res.segs) }, { isNew: true, origin: 'auto', returnTo: 'create' });
+        break;
+      }
+      case 'c-try': { const c = S.create; startRun({ id: null, temp: true, origin: 'auto', name: $('c-name').value.trim() || autoName(), minutes: c.minutes, segs: clone(S.res.segs) }); break; }
+      case 'm-go': {
+        const c = S.create, name = ($('m-name').value.trim()) || 'Nouveau programme';
+        let segs = Array.from({ length: N }, () => ({ v: 4, p: 0 }));
+        if (c.mStart === 'copy'){ const src = byId($('m-copy') ? $('m-copy').value : c.mCopy); if (src) segs = clone(src.segs); }
+        c.mName = ''; openEditor({ id: null, name, minutes: c.mMinutes, segs }, { isNew: true, origin: 'user', returnTo: 'create' });
+        break;
+      }
+      case 'e-save': saveEdit(); break;
+      case 'e-cancel': cancelEdit(false); break;
+      case 's-run': { const q = byId(t.dataset.id); if (q) startRun(q); break; }
+      case 's-pick': pickSheet(id => { lastId = id; ls.set(KEY + '.last', id); render(); }, lastId); break;
+      case 'test-snd': testSounds(); break;
+      case 'export': exportProgs(); break;
+      case 'import': $('fileImport').click(); break;
+    }
+  });
+
+  // Saisie directe
+  document.addEventListener('input', e => {
+    const t = e.target;
+    if (t.id === 'c-name'){ S.create.name = t.value; S.create.nameTouched = true; }
+    else if (t.id === 'm-name'){ S.create.mName = t.value; }
+    else if (t.id === 'e-name' && S.edit){ S.edit.draft.name = t.value; refreshEdit(); }
+    else if (t.dataset && t.dataset.f && S.edit){
+      const i = +t.dataset.i, f = t.dataset.f, x = num(t.value), [a, b] = f === 'v' ? [VMIN, VMAX] : [PMIN, PMAX];
+      if (isFinite(x) && x >= a && x <= b){ S.edit.draft.segs[i][f] = r1(x); refreshEdit(); }
+    }
+  });
+  document.addEventListener('change', e => {
+    const t = e.target;
+    if (t.id === 'm-copy'){ S.create.mCopy = t.value; return; }
+    if (t.id === 'fileImport'){ importProgs(t); return; }
+    if (t.dataset && t.dataset.f && S.edit){ const s = S.edit.draft.segs[+t.dataset.i]; t.value = t.dataset.f === 'v' ? f1.format(s.v) : fp(s.p); }
+  });
+  document.addEventListener('focusin', e => { const r = e.target.closest && e.target.closest('.er'); if (r && S.edit) setHl(+r.dataset.row); });
+
+  /* Boutons + / − : un appui = un pas, appui maintenu = défilement */
+  function hold(spec){
+    const [key, d] = spec.split(':'), dir = +d;
+    if (key === 'cmin'){ S.create.minutes = clamp(S.create.minutes + dir, 5, 240); refreshCreate(); return true; }
+    if (key === 'ckcal'){ S.create.kcal = clamp(Math.round((S.create.kcal + dir * 10) / 10) * 10, 30, 3000); refreshCreate(); return true; }
+    if (key === 'mmin'){ S.create.mMinutes = clamp(S.create.mMinutes + dir, 5, 240); saveCreatePrefs(); refreshCreate(); return true; }
+    if (key === 'emin'){ const d2 = S.edit.draft; const b = d2.minutes; d2.minutes = clamp(d2.minutes + dir, 5, 240); refreshEdit(); return b !== d2.minutes; }
+    if (key === 'sw'){ settings.weight = clamp(Math.round(settings.weight + dir), 30, 250); saveSettings(); $('st-sw').innerHTML = `${fp(settings.weight)}<small>kg</small>`; return true; }
+    if (key === 'swm'){ settings.walkMax = r1(clamp(settings.walkMax + dir * .1, 2, 9)); saveSettings(); $('st-swm').innerHTML = `${f1.format(settings.walkMax)}<small>km/h</small>`; return true; }
+    if (key === 'srm'){ settings.runMax = r1(clamp(settings.runMax + dir * .1, 5, VMAX)); saveSettings(); $('st-srm').innerHTML = `${f1.format(settings.runMax)}<small>km/h</small>`; return true; }
+    const m = /^e([pv])(\d+)$/.exec(key);
+    if (m && S.edit) return bumpSeg(+m[2], m[1], dir);
+    return false;
+  }
+  let hT = null, hI = null;
+  const hStop = () => { clearTimeout(hT); clearInterval(hI); hT = hI = null; };
+  document.addEventListener('pointerdown', e => {
+    const b = e.target.closest('[data-hold]'); if (!b) return;
+    e.preventDefault(); hStop();
+    const spec = b.dataset.hold;
+    hold(spec);
+    hT = setTimeout(() => { hI = setInterval(() => { if (!hold(spec)) hStop(); }, 75); }, 380);
+  });
+  ['pointerup', 'pointercancel'].forEach(ev => document.addEventListener(ev, hStop));
+  document.addEventListener('pointerout', e => { if (e.target.closest && e.target.closest('[data-hold]') && !e.relatedTarget?.closest?.('[data-hold]')) hStop(); });
+  document.addEventListener('click', e => { const b = e.target.closest('[data-hold]'); if (b && e.detail === 0) hold(b.dataset.hold); });
+  document.addEventListener('contextmenu', e => { if (e.target.closest('[data-hold]')) e.preventDefault(); });
+
+  /* ===================== Export / import ===================== */
+  function exportProgs(){
+    const data = { app: 'sole-f63-programmes', version: 2, exported: new Date().toISOString(), settings, programs: progs };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    const d = new Date(), pad = n => String(n).padStart(2, '0');
+    const a = document.createElement('a'), d = new Date(), pad = n => String(n).padStart(2, '0');
     a.href = URL.createObjectURL(blob);
     a.download = `programmes-sole-f63-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.json`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     toast(`${progs.length} programmes exportés`);
-  });
-  $('btnImport').addEventListener('click', () => $('fileImport').click());
-  $('fileImport').addEventListener('change', async e => {
-    const file = e.target.files[0]; e.target.value = '';
+  }
+  async function importProgs(input){
+    const file = input.files[0]; input.value = '';
     if (!file) return;
     let list;
     try {
       const raw = JSON.parse(await file.text());
       list = Array.isArray(raw) ? raw : raw.programs;
       if (!Array.isArray(list)) throw 0;
-      list = list.filter(p => p && typeof p.name === 'string' && Array.isArray(p.segs) && p.segs.length === N)
-        .map(p => ({
-          id: uid(), sid: p.sid, name: p.name.slice(0, 60),
-          minutes: clamp(Math.round(+p.minutes || 40), 5, 240),
-          weight: clamp(+p.weight || 120, 30, 250), updated: Date.now(),
-          segs: p.segs.map(s => ({ v: clamp(Math.round((+s.v || 4) * 10) / 10, VMIN, VMAX), p: clamp(Math.round((+s.p || 0) * 10) / 10, PMIN, PMAX) }))
-        }));
+      list = list.filter(p => p && typeof p.name === 'string' && Array.isArray(p.segs) && p.segs.length === N).map(p => ({
+        id: uid(), sid: p.sid, origin: p.origin, name: p.name.slice(0, 60), minutes: clamp(Math.round(+p.minutes || 40), 5, 240), updated: Date.now(),
+        segs: p.segs.map(s => ({ v: clamp(r1(+s.v || 4), VMIN, VMAX), p: clamp(r1(+s.p || 0), PMIN, PMAX) }))
+      }));
       if (!list.length) throw 0;
     } catch(err){ toast('Fichier non reconnu : choisissez un export de cette appli'); return; }
     let added = 0, replaced = 0;
-    list.forEach(p => {
-      const same = progs.findIndex(x => x.name === p.name);
-      if (same >= 0){ progs[same] = { ...p, id: progs[same].id }; replaced++; }
-      else { progs.push(p); added++; }
-    });
-    cur = progs.find(x => x.name === list[0].name) || progs[0];
-    save(); renderAll();
+    list.forEach(p => { const i = progs.findIndex(x => x.name === p.name); if (i >= 0){ progs[i] = Object.assign(p, { id: progs[i].id }); replaced++; } else { progs.push(p); added++; } });
+    saveProgs(); render();
     toast(`${added} ajouté${added > 1 ? 's' : ''}, ${replaced} mis à jour`);
-  });
+  }
 
-  let toastT;
-  function toast(t){ const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 2200); }
-
-  /* ===== Mode séance ===== */
-  const run = $('run');
-  let rs = null;
-  // Son « bip doux » au volume 100 % : bip court (décompte) ou long et plus aigu (changement de palier).
-  // Chaîne audio : bip à plateau → gain 1,6 → compresseur (plus fort sans saturer).
+  /* ===================== Sons ===================== */
   let audio = null;
   function audioOut(){
     if (!audio){
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const comp = ctx.createDynamicsCompressor();
-      comp.threshold.value = -18; comp.knee.value = 6; comp.ratio.value = 8; comp.attack.value = 0.002; comp.release.value = 0.12;
+      comp.threshold.value = -18; comp.knee.value = 6; comp.ratio.value = 8; comp.attack.value = .002; comp.release.value = .12;
       const master = ctx.createGain(); master.gain.value = 1.6;
       master.connect(comp); comp.connect(ctx.destination);
       audio = { ctx, master };
@@ -975,200 +933,188 @@ tfoot td{font-weight:700;border-bottom:0;font-family:var(--f-display);font-size:
     if (audio.ctx.state === 'suspended') audio.ctx.resume();
     return audio;
   }
-  function beep(freq = 880, dur = .14){
+  // Bip doux au volume 100 % : court pour le décompte, long et plus aigu au changement.
+  function beep(freq = 880, dur = .14, delay = 0){
     try {
       const { ctx, master } = audioOut();
-      const t = ctx.currentTime + 0.01, o = ctx.createOscillator(), g = ctx.createGain(), vol = 0.45;
+      const t = ctx.currentTime + .01 + delay, o = ctx.createOscillator(), g = ctx.createGain(), vol = .45;
       o.type = 'sine'; o.frequency.value = freq;
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(vol, t + 0.005);
-      g.gain.setValueAtTime(vol, t + dur - 0.03);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      o.connect(g); g.connect(master);
-      o.start(t); o.stop(t + dur + 0.02);
+      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .005);
+      g.gain.setValueAtTime(vol, t + dur - .03); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+      o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .02);
     } catch(e){}
   }
-  const beepCount = () => beep(880, .14);
-  const beepChange = () => beep(1320, .5);
-
-  /* Voix : synthèse vocale du navigateur, en français */
+  const beepCount = (d = 0) => beep(880, .14, d);
+  const beepChange = (d = 0) => beep(1320, .5, d);
   let frVoice = null;
   function pickVoice(){ try { frVoice = speechSynthesis.getVoices().find(v => /^fr(-|_|$)/i.test(v.lang)) || null; } catch(e){} }
   try { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; } catch(e){}
   function say(text, interrupt = false){
     try {
       if (interrupt) speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'fr-FR'; u.rate = 1.05; u.volume = 1;
+      const u = new SpeechSynthesisUtterance(text); u.lang = 'fr-FR'; u.rate = 1.05; u.volume = 1;
       if (frVoice) u.voice = frVoice;
       speechSynthesis.speak(u);
     } catch(e){}
   }
-  const consigne = s => `${f1.format(s.v)} kilomètres heure, pente ${f0.format(s.p)}`;
+  const consigne = s => `${f1.format(s.v)} kilomètres heure, pente ${fp(s.p)}`;
+  function testSounds(){
+    if (!settings.beep && !settings.voice){ toast('Bips et voix sont coupés'); return; }
+    if (settings.beep){ [0, 1, 2].forEach(k => beepCount(k)); beepChange(3); }
+    if (settings.voice){
+      if (!settings.beep) ['trois', 'deux', 'un'].forEach((w, k) => setTimeout(() => say(w, true), k * 1000));
+      setTimeout(() => say('5,8 kilomètres heure, pente 4', true), settings.beep ? 3450 : 3000);
+    }
+  }
 
-  /* Choix du son : bips et voix indépendants (les deux, l'un, l'autre ou aucun) */
-  let snd = { beep: true, voice: false };
-  try { Object.assign(snd, JSON.parse(localStorage.getItem(KEY + '.sound') || '{}')); } catch(e){}
-  const saveSnd = () => { try { localStorage.setItem(KEY + '.sound', JSON.stringify(snd)); } catch(e){} };
+  /* ===================== Séance plein écran ===================== */
+  const run = $('run');
+  let rs = null;
+  function cueCount(n){ if (settings.beep) beepCount(); else if (settings.voice) say(['un', 'deux', 'trois'][n - 1], true); }
+  function cueChange(s){ if (settings.beep) beepChange(); if (settings.voice) setTimeout(() => say(consigne(s), true), settings.beep ? 450 : 0); }
+  function cueStart(first){ const s = rs.p.segs[rs.seg]; if (settings.beep) beepCount(); if (settings.voice) setTimeout(() => say((first ? "C'est parti. " : 'Reprise. ') + consigne(s), true), settings.beep ? 250 : 0); }
+  function cueEnd(){ if (settings.beep) beepChange(); if (settings.voice) setTimeout(() => say(`Séance terminée. ${f2.format(rs.c.dist)} kilomètres, ${f0.format(rs.c.kcal)} kilocalories. Bravo.`, true), settings.beep ? 500 : 0); }
 
-  // Décompte à 3, 2, 1 s : bip si activé ; voix seule = elle compte « trois, deux, un »
-  function cueCount(n){
-    if (snd.beep) beepCount();
-    else if (snd.voice) say(['un', 'deux', 'trois'][n - 1], true);
-  }
-  // Changement de palier : bip long, puis la voix annonce la nouvelle consigne
-  function cueChange(s){
-    if (snd.beep) beepChange();
-    if (snd.voice) setTimeout(() => say(consigne(s), true), snd.beep ? 450 : 0);
-  }
-  function cueStart(first){
-    const s = cur.segs[rs.seg];
-    if (snd.beep) beepCount();
-    if (snd.voice) setTimeout(() => say((first ? "C'est parti. " : 'Reprise. ') + consigne(s), true), snd.beep ? 250 : 0);
-  }
-  function cueEnd(){
-    if (snd.beep) beepChange();
-    if (snd.voice) setTimeout(() => say(`Séance terminée. ${f2.format(rs.c.dist)} kilomètres, ${f0.format(rs.c.kcal)} kilocalories. Bravo.`, true), snd.beep ? 500 : 0);
-  }
-  function renderSnd(){
-    const b = $('rBeep'), v = $('rVoice'); if (!b) return;
-    b.setAttribute('aria-pressed', snd.beep); v.setAttribute('aria-pressed', snd.voice);
-    b.querySelector('em').textContent = snd.beep ? 'activés' : 'coupés';
-    v.querySelector('em').textContent = snd.voice ? 'activée' : 'coupée';
-  }
-  $('btnRun').addEventListener('click', () => {
-    const c = compute(cur);
-    rs = { c, total: cur.minutes * 60, segSec: c.segMin * 60, elapsed: 0, playing: false, last: null, seg: 0, timer: null, lock: null };
-    run.innerHTML = `
-      <div class="run-top">
-        <h3>${esc(cur.name)}</h3>
-        <div class="snd" role="group" aria-label="Signaux sonores">
-          <button class="snd-btn" type="button" id="rBeep" aria-pressed="true">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5a5 5 0 0 0-5 5v3.2L3.5 14h13L15 10.7V7.5a5 5 0 0 0-5-5zM8 16.5a2 2 0 0 0 4 0"/></svg>
-            <span>Bips <em></em></span></button>
-          <button class="snd-btn" type="button" id="rVoice" aria-pressed="false">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8v4h3l4 3.5v-11L6 8H3zM13.5 7.2a4 4 0 0 1 0 5.6M15.8 5a7 7 0 0 1 0 10"/></svg>
-            <span>Voix <em></em></span></button>
-        </div>
-        <button class="btn" type="button" id="rQuit">Quitter</button>
+  function startRun(p){
+    if (!p.temp){ lastId = p.id; ls.set(KEY + '.last', p.id); }
+    const c = compute(p);
+    rs = { p, c, total: p.minutes * 60, segSec: c.segMin * 60, elapsed: 0, playing: false, last: null, seg: 0, timer: null, lock: null, done: false };
+    run.innerHTML = `<div class="rw">
+      <div class="run-top"><span class="nm">${esc(p.name)}</span>
+        <div class="tg" id="rSnd">${sndBtns()}</div>
+        <button type="button" class="x" id="rQuit" aria-label="Quitter la séance">${ICON.x}</button>
       </div>
-      <div><div class="run-clock" id="rClock">0:00</div><div class="run-sub" id="rSub"></div></div>
-      <div class="bar"><i id="rBar"></i></div>
-      <div class="run-targets">
-        <div class="target v"><span class="eyebrow">Vitesse km/h</span><b id="rV"></b><span class="next" id="rVn"></span></div>
-        <div class="target p"><span class="eyebrow">Pente %</span><b id="rP"></b><span class="next" id="rPn"></span></div>
+      <div><div class="clock" id="rClock">0:00</div><div class="clock-s" id="rSub"></div></div>
+      <div class="pbar"><i id="rBar"></i></div>
+      <div class="big2">
+        <div class="tgt v"><span>Vitesse km/h</span><b id="rV"></b><em id="rVn"></em></div>
+        <div class="tgt p"><span>Pente %</span><b id="rP"></b><em id="rPn"></em></div>
       </div>
-      <div class="run-strip" id="rStrip">${cur.segs.map(s => `<i style="height:${Math.max(8, s.v / Math.max(...cur.segs.map(x => x.v)) * 100)}%"></i>`).join('')}</div>
-      <div class="run-stats"><span><b id="rD">0,00</b>km</span><span><b id="rK">0</b>kcal</span><span><b id="rLeft"></b>restant</span></div>
-      <div class="run-ctl">
-        <button class="btn" type="button" id="rPrev">Palier précédent</button>
-        <button class="btn go" type="button" id="rPlay">Démarrer</button>
-        <button class="btn" type="button" id="rNext">Palier suivant</button>
-      </div>`;
+      <div id="rStrip"></div>
+      <div class="rstats"><span><b id="rD">0,00</b>km</span><span><b id="rK">0</b>kcal</span><span><b id="rLeft"></b>restant</span></div>
+      <div class="small center" id="rHint">Mettez en pause pour quitter.</div>
+      <div class="rctl">
+        <button type="button" class="c" id="rPrev" aria-label="Palier précédent">${ICON.prev}</button>
+        <button type="button" class="go" id="rPlay">Démarrer</button>
+        <button type="button" class="c" id="rNext" aria-label="Palier suivant">${ICON.next}</button>
+      </div>
+    </div>`;
     run.hidden = false;
-    renderSnd();
-    $('rBeep').onclick = () => { snd.beep = !snd.beep; saveSnd(); renderSnd(); if (snd.beep) beepCount(); };
-    $('rVoice').onclick = () => { snd.voice = !snd.voice; saveSnd(); renderSnd(); if (snd.voice) say('Voix activée', true); else { try { speechSynthesis.cancel(); } catch(e){} } };
     $('rQuit').onclick = stopRun;
     $('rPlay').onclick = togglePlay;
     $('rPrev').onclick = () => { rs.elapsed = Math.max(0, (Math.floor(rs.elapsed / rs.segSec) - 1) * rs.segSec); tick(true); };
-    $('rNext').onclick = () => { rs.elapsed = Math.min(rs.total, (Math.floor(rs.elapsed / rs.segSec) + 1) * rs.segSec); tick(true); };
-    tick(true);
-  });
-  async function togglePlay(){
-    rs.playing = !rs.playing;
+    $('rNext').onclick = () => { rs.elapsed = Math.min(rs.total - .5, (Math.floor(rs.elapsed / rs.segSec) + 1) * rs.segSec); tick(true); };
+    $('rSnd').onclick = e => { const b = e.target.closest('[data-snd]'); if (!b) return; const k = b.dataset.snd; settings[k] = !settings[k]; saveSettings(); b.setAttribute('aria-pressed', settings[k]); if (k === 'voice') { if (settings.voice) say('Voix activée', true); else try { speechSynthesis.cancel(); } catch(err){} } else if (settings.beep) beepCount(); };
+    tick(true); updateRunUi();
+  }
+  function updateRunUi(){
+    if (!rs || rs.done) return;
     $('rPlay').textContent = rs.playing ? 'Pause' : (rs.elapsed > 0 ? 'Reprendre' : 'Démarrer');
+    $('rPlay').classList.toggle('pause', rs.playing);
+    $('rQuit').hidden = rs.playing;
+    $('rHint').textContent = rs.playing ? 'Mettez en pause pour quitter.' : (rs.elapsed > 0 ? 'En pause.' : 'Prêt.');
+  }
+  async function togglePlay(){
+    if (!rs || rs.done) return;
+    rs.playing = !rs.playing;
     if (rs.playing){
       rs.last = performance.now(); cueStart(rs.elapsed === 0);
       rs.timer = setInterval(() => tick(false), 250);
       try { rs.lock = await navigator.wakeLock?.request('screen'); } catch(e){}
     } else { clearInterval(rs.timer); try { rs.lock?.release(); } catch(e){} }
+    updateRunUi();
   }
   function tick(manual){
+    if (!rs || rs.done) return;
     if (rs.playing && !manual){ const n = performance.now(); rs.elapsed += (n - rs.last) / 1000; rs.last = n; }
     if (rs.playing && manual) rs.last = performance.now();
     rs.elapsed = Math.min(rs.elapsed, rs.total);
-    const i = Math.min(N - 1, Math.floor(rs.elapsed / rs.segSec));
-    if (i !== rs.seg && rs.playing && !manual && rs.elapsed < rs.total) cueChange(cur.segs[i]);
+    const p = rs.p, i = Math.min(N - 1, Math.floor(rs.elapsed / rs.segSec));
+    if (i !== rs.seg && rs.playing && !manual && rs.elapsed < rs.total) cueChange(p.segs[i]);
     rs.seg = i;
-    const s = cur.segs[i], nx = cur.segs[i + 1];
+    const s = p.segs[i], nx = p.segs[i + 1];
     const inSeg = rs.elapsed - i * rs.segSec, leftSeg = rs.segSec - inSeg;
-    // Décompte : 3 bips courts à 3, 2 et 1 seconde du changement
     const secLeft = Math.ceil(leftSeg - 1e-6);
     const counting = rs.playing && secLeft >= 1 && secLeft <= 3 && rs.elapsed < rs.total;
-    if (counting && !manual){
-      const key = i + ':' + secLeft;
-      if (rs.lastCd !== key){ rs.lastCd = key; cueCount(secLeft); }
-    }
-    $('rClock').classList.toggle('cd', counting);
-    $('rClock').textContent = mmss(secLeft / 60);
-    $('rSub').textContent = `avant changement · temps écoulé ${mmss(rs.elapsed / 60)} sur ${mmss(rs.total / 60)}`;
+    if (counting && !manual){ const key = i + ':' + secLeft; if (rs.lastCd !== key){ rs.lastCd = key; cueCount(secLeft); } }
+    const ck = $('rClock'); ck.classList.toggle('cd', counting); ck.textContent = mmss(secLeft / 60);
+    $('rSub').textContent = `avant ${nx ? 'le prochain palier' : 'la fin'} · ${mmss(rs.elapsed / 60)} sur ${mmss(rs.total / 60)}`;
     $('rBar').style.width = (rs.elapsed / rs.total * 100) + '%';
-    $('rV').textContent = f1.format(s.v);
-    $('rP').textContent = f1.format(s.p).replace(/,0$/, '');
-    $('rVn').innerHTML = nx ? `Ensuite <strong>${f1.format(nx.v)}</strong>` : 'Dernier segment';
-    $('rPn').innerHTML = nx ? `Ensuite <strong>${f1.format(nx.p).replace(/,0$/, '')} %</strong>` : 'Dernier segment';
-    [...$('rStrip').children].forEach((b, k) => b.className = k < i ? 'done' : k === i ? 'now' : '');
+    $('rV').textContent = f1.format(s.v); $('rP').textContent = fp(s.p);
+    $('rVn').innerHTML = nx ? `Ensuite <strong>${f1.format(nx.v)}</strong>` : 'Dernier palier';
+    $('rPn').innerHTML = nx ? `Ensuite <strong>${fp(nx.p)} %</strong>` : 'Dernier palier';
+    if (rs.stripSeg !== i){ rs.stripSeg = i; $('rStrip').innerHTML = profileSvg(p.segs, { W: 340, H: 56, noLine: true, done: i, pad: 1.5, cls: 'rstrip' }); }
     const r = rs.c.rows[i], frac = inSeg / rs.segSec;
-    const d = (i ? rs.c.rows[i - 1].distCum : 0) + r.dist * frac;
-    const k = (i ? rs.c.rows[i - 1].kcalCum : 0) + r.kcal * frac;
-    $('rD').textContent = f2.format(d); $('rK').textContent = f0.format(k);
+    $('rD').textContent = f2.format((i ? rs.c.rows[i - 1].distCum : 0) + r.dist * frac);
+    $('rK').textContent = f0.format((i ? rs.c.rows[i - 1].kcalCum : 0) + r.kcal * frac);
     $('rLeft').textContent = mmss((rs.total - rs.elapsed) / 60);
-    if (rs.elapsed >= rs.total && rs.playing){ togglePlay(); $('rPlay').textContent = 'Terminé'; $('rClock').classList.remove('cd'); $('rClock').textContent = 'Bravo'; cueEnd(); }
+    if (rs.elapsed >= rs.total && rs.playing){ finishRun(); }
+  }
+  function finishRun(){
+    clearInterval(rs.timer); rs.playing = false; rs.done = true; cueEnd();
+    try { rs.lock?.release(); } catch(e){}
+    const p = rs.p, c = rs.c;
+    run.querySelector('.rw').innerHTML = `<div class="run-top"><span class="nm">${esc(p.name)}</span></div>
+      <div class="card done-card">
+        <h2>Bravo !</h2>
+        <span class="small">Séance terminée</span>
+        <div class="kpis">
+          <div class="kpi"><span>Durée</span><b>${f0.format(p.minutes)}<small>min</small></b></div>
+          <div class="kpi"><span>Distance</span><b>${f2.format(c.dist)}<small>km</small></b></div>
+          <div class="kpi"><span>Dépense</span><b>${f0.format(c.kcal)}<small>kcal</small></b></div>
+          <div class="kpi g"><span>Pente moy.</span><b>${f1.format(c.avgP)}<small>%</small></b></div>
+        </div>
+        ${p.temp ? '<button type="button" class="btn pri" id="rKeep">Enregistrer ce programme</button>' : ''}
+        <button type="button" class="btn" id="rClose">Fermer</button>
+      </div>`;
+    $('rClose').onclick = stopRun;
+    if (p.temp) $('rKeep').onclick = () => { const d = clone(p); delete d.temp; d.id = uid(); d.updated = Date.now(); progs.push(d); saveProgs(); lastId = d.id; ls.set(KEY + '.last', d.id); toast('Programme enregistré'); $('rKeep').remove(); };
   }
   function stopRun(){
     if (rs){ clearInterval(rs.timer); try { rs.lock?.release(); } catch(e){} }
+    try { speechSynthesis.cancel(); } catch(e){}
     run.hidden = true; run.innerHTML = ''; rs = null;
+    render();
     if (pendingReload) reloadForUpdate();
   }
 
-  renderAll();
-  setSaved('ok');
-
-  /* ===== Mise à jour automatique et version affichée ===== */
+  /* ===================== Mise à jour automatique et version ===================== */
   let pendingReload = false;
-  function reloadForUpdate(){
-    try { sessionStorage.setItem('solef63.updated', '1'); } catch(e){}
-    location.reload();
-  }
+  function reloadForUpdate(){ try { sessionStorage.setItem('solef63.updated', '1'); } catch(e){} location.reload(); }
+  let versionTxt = '';
   function showVersion(v){
-    const m = /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/.exec(v || '');
-    if (!m) return;
-    const el = $('appVer');
-    el.textContent = `Version du ${m[3]}/${m[2]}/${m[1]} à ${m[4]}h${m[5]}`;
-    el.title = 'Version ' + v;
-    el.hidden = false;
+    const m = /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/.exec(v || ''); if (!m) return;
+    versionTxt = `Version du ${m[3]}/${m[2]}/${m[1]} à ${m[4]}h${m[5]}`;
+    const el = $('appVer'); if (el){ el.textContent = versionTxt; el.title = 'Version ' + v; el.hidden = false; }
   }
   function askVersion(){
+    if (versionTxt){ const el = $('appVer'); if (el){ el.textContent = versionTxt; el.hidden = false; } return; }
     const ctl = navigator.serviceWorker && navigator.serviceWorker.controller;
-    const viaFile = () => fetch('sw.js', { cache: 'no-store' }).then(r => r.ok ? r.text() : '')
-      .then(t => { const m = /const VERSION = '([^']+)'/.exec(t); if (m) showVersion(m[1]); }).catch(() => {});
+    const viaFile = () => fetch('sw.js', { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(t => { const m = /const VERSION = '([^']+)'/.exec(t); if (m) showVersion(m[1]); }).catch(() => {});
     if (!ctl) return viaFile();
     const ch = new MessageChannel(); let done = false;
     ch.port1.onmessage = e => { done = true; showVersion(e.data); };
     ctl.postMessage({ type: 'version' }, [ch.port2]);
     setTimeout(() => { if (!done) viaFile(); }, 1000);
   }
-  try {
-    if (sessionStorage.getItem('solef63.updated')){
-      sessionStorage.removeItem('solef63.updated');
-      setTimeout(() => toast('Appli mise à jour'), 400);
-    }
-  } catch(e){}
-
+  try { if (sessionStorage.getItem('solef63.updated')){ sessionStorage.removeItem('solef63.updated'); setTimeout(() => toast('Appli mise à jour'), 400); } } catch(e){}
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
     let hadController = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!hadController){ hadController = true; askVersion(); return; } // première installation : rien à recharger
+      if (!hadController){ hadController = true; versionTxt = ''; askVersion(); return; }
       if (rs){ pendingReload = true; toast('Nouvelle version prête : elle s’installera à la fin de la séance'); return; }
+      if (S.view === 'edit' && S.edit && (S.edit.isNew || editChanges())){ pendingReload = true; return; }
       reloadForUpdate();
     });
     navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
       reg.update().catch(() => {});
-      // Vérifie aussi quand on revient sur l'appli (téléphone sorti de veille, onglet réaffiché)
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
     }).catch(() => {});
   }
+
+  /* ===================== Démarrage ===================== */
+  try { history.replaceState({ v: 'root' }, ''); } catch(e){}
+  render();
   askVersion();
 })();
 </script>

@@ -6,15 +6,16 @@ Chaque programme est découpé en **18 paliers de durée égale** (1/18 du temps
 
 ## Fonctions
 
-- Temps total (de 5 à 240 min, pas de 1 min) et poids réglables par programme
-- Boutons + / − sur chaque pente (pas de 1 %) et chaque vitesse (pas de 0,1 km/h), maintien appuyé pour défiler
-- Graphique : histogramme des vitesses et courbe de pente, modifiable en glissant le doigt
-- Programmes nommés, enregistrés automatiquement, dupliquables
-- 10 programmes de marche prédéfinis
-- Création automatique : temps total + kcal visées + marche ou course → programme calculé
-- Mode séance : décompte par palier, consignes en grand, 3 bips avant chaque changement, écran maintenu allumé
-- Export / import des programmes (fichier .json) pour passer d'un appareil à l'autre
-- Installable sur téléphone et utilisable hors connexion
+Quatre onglets en bas de l'écran :
+
+- **Programmes** : liste filtrable (tous, les miens, prédéfinis) ; un appui ouvre la fiche (profil, chiffres clés, Lancer, Modifier, Dupliquer, Renommer, Supprimer, détail des 18 paliers).
+- **Créer** : automatique (temps total, kcal visées, marche ou course, forme) ou manuel (profil plat ou copie). Rien n'est enregistré avant d'appuyer sur **Enregistrer** ; on peut aussi ajuster les paliers avant, ou lancer la séance sans enregistrer.
+- **Séance** : reprend le dernier programme lancé. Séance plein écran : décompte par palier, consignes en grand, bips et voix, écran maintenu allumé, bilan à la fin.
+- **Réglages** : poids (unique pour tous les programmes), vitesse max en marche et en course (plafonds de la création automatique), sons, export / import, version.
+
+Modification d'un programme : écran dédié avec **Annuler / Enregistrer**, une ligne par palier avec + / − (pente 1 %, vitesse 0,1 km/h, appui maintenu pour défiler) et les totaux en bas.
+
+Écran fixe : seule la zone centrale défile, champs en 16 px minimum (pas de zoom ni de décalage latéral sur iPhone). Installable sur téléphone et utilisable hors connexion.
 
 ## Formules (identiques à l'Excel)
 
@@ -43,7 +44,7 @@ Chaque envoi sur `main` est publié en une à deux minutes. Avant chaque envoi, 
 
 À la prochaine ouverture, l'appli détecte la nouvelle version, l'installe et se recharge toute seule (message « Appli mise à jour »). Elle vérifie aussi quand on la réaffiche après une mise en veille. Si une séance est en cours, la mise à jour attend la fin de la séance.
 
-La version en service s'affiche en petit en bas de la liste des programmes : « Version du 09/10/2026 à 14h01 ».
+La version en service s'affiche en petit en bas de la liste des programmes : « Version du 09/10/2026 à 15h28 ».
 
 ## Données
 
@@ -53,7 +54,7 @@ Les programmes sont stockés dans le navigateur de chaque appareil (localStorage
 
 Vitesse 0,8 à 18 km/h, pente 0 à 15 % (maximum du tapis). Modifiables en haut du script (`VMIN`, `VMAX`, `PMIN`, `PMAX`).
 
-Création automatique : vitesse max 5,8 km/h en marche et 11 km/h en course, pente jusqu'à 15 % dans les deux cas.
+Création automatique : plafonds de vitesse réglés dans Réglages (par défaut 5,8 km/h en marche et 11 km/h en course), pente jusqu'à 15 %. Échauffement, récupérations et retour au calme sont calculés en pourcentage de ces vitesses max.
 
 Mode séance : deux boutons indépendants, **Bips** et **Voix** (les deux, l'un, l'autre ou aucun, choix mémorisé).
 - Bips : 3 bips courts à 3, 2 et 1 seconde de chaque changement de palier, puis un bip long au changement.
