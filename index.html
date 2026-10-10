@@ -212,6 +212,8 @@ select.txt{appearance:auto}
 .bt-st{font-size:12.5px;color:var(--muted)}
 .bt-st.ok{color:var(--ok);font-weight:600}
 .bt-st.lost{color:var(--warn);font-weight:600}
+.bt-st.err{color:var(--danger)}
+.bt-err{color:var(--danger)!important;font-size:14px;overflow-wrap:anywhere}
 .btbar{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:7px 10px;flex:none}
 .btbar i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--muted)}
 .btbar span{flex:1;min-width:0}
@@ -1231,31 +1233,54 @@ select.txt{appearance:auto}
   const FTMS = 0x1826, C_FEAT = 0x2acc, C_TREAD = 0x2acd, C_SPD = 0x2ad4, C_INC = 0x2ad5, C_CP = 0x2ad9, C_STATUS = 0x2ada;
   const bt = { dev: null, cp: null, connected: false, connecting: false, lost: false, canSpeed: true, canIncl: true,
     hasControl: false, live: { v: null, p: null }, range: { vmin: VMIN, vmax: VMAX, pmin: PMIN, pmax: PMAX },
-    queue: Promise.resolve(), pending: null, err: '', name: '' };
+    queue: Promise.resolve(), pending: null, err: '', name: '', lastErr: '', stage: '' };
   const btAvailable = () => !!(navigator.bluetooth && navigator.bluetooth.requestDevice);
   const btDriving = () => bt.connected && settings.drive && !(rs && rs.noDrive) && (bt.canSpeed || bt.canIncl);
   const u16 = x => [x & 255, (x >> 8) & 255];
   const s16 = x => u16(x < 0 ? x + 65536 : x);
   const CP_ERR = { 2: 'commande non prise en charge', 3: 'valeur refusée', 4: 'commande échouée', 5: 'contrôle refusé par le tapis' };
 
-  async function btConnect(){
+  async function btConnect(wide = false){
     if (!btAvailable()){ btHelpSheet(); return; }
     if (bt.connecting) return;
-    bt.connecting = true; btRefreshUi();
+    bt.connecting = true; bt.lastErr = ''; bt.stage = 'recherche du tapis'; btRefreshUi();
     try {
-      const dev = await navigator.bluetooth.requestDevice({ filters: [{ services: [FTMS] }], optionalServices: [FTMS] });
+      const opts = wide ? { acceptAllDevices: true, optionalServices: [FTMS] } : { filters: [{ services: [FTMS] }], optionalServices: [FTMS] };
+      const dev = await navigator.bluetooth.requestDevice(opts);
       if (bt.dev && bt.dev !== dev){ try { bt.dev.gatt.disconnect(); } catch(e){} }
       bt.dev = dev; bt.name = dev.name || 'Tapis';
       dev.addEventListener('gattserverdisconnected', onBtLost);
       await btSetup();
       toast(`${bt.name} connecté`);
     } catch(e){
-      if (!(e && e.name === 'NotFoundError')) toast('Connexion impossible : vérifiez que le tapis est allumé et que Kinomap ou Sole+ ne sont pas connectés');
+      const raw = `${e && e.name ? e.name : 'Erreur'}${e && e.message ? ' : ' + e.message : ''}`;
+      const cancelled = e && e.name === 'NotFoundError' && /cancel|annul/i.test(e.message || '');
+      if (bt.dev && !bt.connected){ try { bt.dev.gatt.disconnect(); } catch(err){} }
+      if (!cancelled){
+        bt.lastErr = `Échec à l'étape « ${bt.stage} » (${raw})`;
+        btErrorSheet(wide);
+      }
     }
     bt.connecting = false; btRefreshUi();
   }
+  function btErrorSheet(wasWide){
+    openSheet(`<h3>Connexion impossible</h3>
+      <p class="bt-err">${esc(bt.lastErr)}</p>
+      <p><b>À vérifier :</b></p>
+      <p>1. Kinomap et Sole+ fermés (balayés vers le haut), sur ce téléphone et sur tout autre appareil (tablette…).</p>
+      <p>2. Réglages de l'iPhone, Bluefy : Bluetooth autorisé.</p>
+      <p>3. Tapis allumé, console sur l'écran d'accueil.</p>
+      ${wasWide ? '' : '<p>Si la liste de Bluefy était vide, essayez la recherche élargie : elle montre tous les appareils Bluetooth, choisissez celui qui ressemble au tapis.</p><button type="button" class="btn pri" data-act="bt-wide">Recherche élargie</button>'}
+      <button type="button" class="btn" data-act="bt-retry">Réessayer</button>
+      <button type="button" class="btn" data-act="sh-close">Fermer</button>`, m => {
+      const w = m.querySelector('[data-act="bt-wide"]'); if (w) w.onclick = () => { closeSheet(); btConnect(true); };
+      m.querySelector('[data-act="bt-retry"]').onclick = () => { closeSheet(); btConnect(false); };
+    });
+  }
   async function btSetup(){
+    bt.stage = 'connexion au tapis';
     const server = await bt.dev.gatt.connect();
+    bt.stage = 'service Fitness Machine';
     const svc = await server.getPrimaryService(FTMS);
     try {
       const f = await (await svc.getCharacteristic(C_FEAT)).readValue();
@@ -1265,9 +1290,12 @@ select.txt{appearance:auto}
     try { const r = await (await svc.getCharacteristic(C_INC)).readValue(); bt.range.pmin = r.getInt16(0, true) / 10; bt.range.pmax = r.getInt16(2, true) / 10 || PMAX; } catch(e){}
     try { const t = await svc.getCharacteristic(C_TREAD); t.addEventListener('characteristicvaluechanged', onTread); await t.startNotifications(); } catch(e){}
     try { const st = await svc.getCharacteristic(C_STATUS); st.addEventListener('characteristicvaluechanged', onStatus); await st.startNotifications(); } catch(e){}
+    bt.stage = 'point de contrôle';
     const cp = await svc.getCharacteristic(C_CP);
     cp.addEventListener('characteristicvaluechanged', onCp);
+    bt.stage = 'abonnement aux réponses';
     await cp.startNotifications();
+    bt.stage = 'prêt';
     bt.cp = cp; bt.connected = true; bt.lost = false; bt.hasControl = false; bt.err = '';
   }
   function btDisconnect(){
@@ -1350,10 +1378,11 @@ select.txt{appearance:auto}
     if (bt.connecting) return 'Connexion…';
     if (bt.connected) return `${bt.name} connecté`;
     if (bt.lost) return 'Connexion perdue';
+    if (bt.lastErr) return 'Échec : ' + bt.lastErr.replace(/^Échec à l'étape /, '');
     return 'Non connecté';
   }
   function btRefreshUi(){
-    document.querySelectorAll('[data-bt-status]').forEach(el => { el.textContent = btStatusText(); el.className = 'bt-st' + (bt.connected ? ' ok' : bt.lost ? ' lost' : ''); });
+    document.querySelectorAll('[data-bt-status]').forEach(el => { el.textContent = btStatusText(); el.className = 'bt-st' + (bt.connected ? ' ok' : bt.lost ? ' lost' : bt.lastErr ? ' err' : ''); });
     document.querySelectorAll('[data-act="bt-toggle"]').forEach(b => { b.textContent = bt.connected ? 'Déconnecter' : (bt.connecting ? 'Connexion…' : 'Connecter'); });
     const cap = $('bt-cap'); if (cap) cap.textContent = bt.connected ? `Vitesse ${bt.canSpeed ? 'pilotée' : 'non pilotable'} · pente ${bt.canIncl ? 'pilotée' : 'non pilotable'}` : '';
     btLiveUi();
