@@ -308,7 +308,7 @@ select.txt{appearance:auto}
 <script>
 (() => {
   /* ===================== Constantes et outils ===================== */
-  const PAGE_BUILD = 'v7';   // change à chaque envoi : affiché à côté de la version
+  const PAGE_BUILD = 'v8';   // change à chaque envoi : affiché à côté de la version
   const N = 18, VMIN = 0.8, VMAX = 18, PMIN = 0, PMAX = 15;
   const KEY = 'solef63.programs.v1';
   const $ = id => document.getElementById(id);
@@ -583,6 +583,7 @@ select.txt{appearance:auto}
         <div class="chips" id="durChips">${chip(0, `Toutes <small>${list.length}</small>`)}${durs.map(d => chip(d, `${d} min${list.filter(p => p.minutes === d).length > 1 ? ` <small>${list.filter(p => p.minutes === d).length}</small>` : ''}`)).join('')}</div>
         <div class="tiles">${shown.map(tileHtml).join('')}</div>
         <span class="small center">Appui long sur une tuile pour la supprimer, la dupliquer ou la lancer.</span>
+        <button type="button" class="btn danger" data-act="del-all" style="margin-top:14px">${S.dur ? `Effacer les ${shown.length > 1 ? shown.length + ' programmes' : 'programme'} de ${S.dur} min` : `Tout effacer (${list.length})`}</button>
         <div style="height:66px"></div>
       </div>
       <button type="button" class="fab" data-act="new">${ICON.plus}Nouveau programme</button>`;
@@ -921,6 +922,25 @@ select.txt{appearance:auto}
       saveProgs(); render(); toast('Programme restauré');
     });
   }
+  // Effacement en masse : tous les programmes, ou ceux de la durée filtrée
+  function deleteAllSheet(){
+    const sel = S.dur ? progs.filter(p => p.minutes === S.dur) : progs.slice();
+    if (!sel.length) return;
+    const n = sel.length, what = S.dur ? `${n > 1 ? `les ${n} programmes` : 'le programme'} de ${S.dur} min` : `les ${n} programme${n > 1 ? 's' : ''}`;
+    openSheet(`<h3>Effacer ${what} ?</h3><p>Vous pourrez annuler pendant 5 secondes. Pensez à exporter vos programmes (Réglages) si vous voulez les garder.</p>
+      <button type="button" class="btn danger fill" data-act="dall-ok">Effacer ${n > 1 ? n + ' programmes' : '1 programme'}</button><button type="button" class="btn" data-act="sh-close">Annuler</button>`, m => {
+      m.querySelector('[data-act="dall-ok"]').onclick = () => {
+        const before = progs.slice(), lastBefore = lastId, ids = new Set(sel.map(p => p.id));
+        progs = progs.filter(p => !ids.has(p.id));
+        if (lastId && ids.has(lastId)){ lastId = null; ls.set(KEY + '.last', null); }
+        saveProgs(); closeSheet(); S.dur = 0; render();
+        toastUndo(`${n} programme${n > 1 ? 's' : ''} effacé${n > 1 ? 's' : ''}`, () => {
+          progs = before; lastId = lastBefore; ls.set(KEY + '.last', lastBefore);
+          saveProgs(); render(); toast('Programmes restaurés');
+        });
+      };
+    });
+  }
   function tileMenu(p){
     const c = compute(p);
     openSheet(`<h3>${esc(shortName(p))} · ${p.minutes} min</h3><p>${f0.format(c.kcal)} kcal · ${f2.format(c.dist)} km · ${f1.format(c.avgV)} km/h · ${f1.format(c.avgP)} %</p>
@@ -998,6 +1018,7 @@ select.txt{appearance:auto}
     const a = t.dataset.act, p = byId(S.detailId);
     switch (a){
       case 'new': S.tab = 'create'; go('create'); break;
+      case 'del-all': deleteAllSheet(); break;
       case 'back': go('list', { push: false }); break;
       case 'run': if (p) startRun(p); break;
       case 'edit': if (p) openEditor(p, { returnTo: 'detail' }); break;
