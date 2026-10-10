@@ -305,7 +305,7 @@ select.txt{appearance:auto}
 <script>
 (() => {
   /* ===================== Constantes et outils ===================== */
-  const PAGE_BUILD = 'diag3';   // change à chaque envoi : affiché à côté de la version
+  const PAGE_BUILD = 'v4';   // change à chaque envoi : affiché à côté de la version
   const N = 18, VMIN = 0.8, VMAX = 18, PMIN = 0, PMAX = 15;
   const KEY = 'solef63.programs.v1';
   const $ = id => document.getElementById(id);
@@ -1236,7 +1236,7 @@ select.txt{appearance:auto}
   const FTMS = uuid(0x1826), C_FEAT = uuid(0x2acc), C_TREAD = uuid(0x2acd), C_SPD = uuid(0x2ad4), C_INC = uuid(0x2ad5), C_CP = uuid(0x2ad9), C_STATUS = uuid(0x2ada);
   const bt = { dev: null, cp: null, connected: false, connecting: false, lost: false, canSpeed: true, canIncl: true,
     hasControl: false, live: { v: null, p: null }, range: { vmin: VMIN, vmax: VMAX, pmin: PMIN, pmax: PMAX },
-    queue: Promise.resolve(), pending: null, err: '', name: '', lastErr: '', stage: '' };
+    queue: Promise.resolve(), pending: null, err: '', errSpd: '', errInc: '', name: '', lastErr: '', stage: '', target: null, retryT: null, retryN: 0, lastSpdSend: 0, lastSpdCode: 0 };
   const btAvailable = () => !!(navigator.bluetooth && navigator.bluetooth.requestDevice);
   const btDriving = () => bt.connected && settings.drive && !(rs && rs.noDrive) && (bt.canSpeed || bt.canIncl);
   const u16 = x => [x & 255, (x >> 8) & 255];
@@ -1369,20 +1369,50 @@ select.txt{appearance:auto}
   async function btSend(bytes){
     let r = await cpSend(bytes);
     if (r === 5){ bt.hasControl = false; if (await btControl()) r = await cpSend(bytes); }
-    if (r > 1){ bt.err = CP_ERR[r] || 'erreur'; btLiveUi(); }
     return r;
+  }
+  const spdBytes = v => [0x02, ...u16(Math.round(clamp(v, bt.range.vmin, bt.range.vmax) * 100))];
+  const incBytes = p => [0x03, ...s16(Math.round(clamp(p, bt.range.pmin, bt.range.pmax) * 10))];
+  // Vitesse refusée (souvent pendant la phase de démarrage du tapis) : nouvel essai toutes les 2 s, 8 fois au plus
+  function btRetrySpeed(){
+    clearTimeout(bt.retryT);
+    if (bt.retryN >= 8 || !bt.target){ bt.errSpd = `vitesse refusée par le tapis (${CP_ERR[bt.lastSpdCode] || 'erreur'})`; btLiveUi(); return; }
+    bt.retryN++;
+    bt.errSpd = `vitesse refusée, nouvel essai ${bt.retryN}/8…`; btLiveUi();
+    bt.retryT = setTimeout(async () => {
+      if (!rs || !rs.playing || !btDriving() || !bt.target) return;
+      const r = await btSend(spdBytes(bt.target.v));
+      bt.lastSpdCode = r; bt.lastSpdSend = Date.now();
+      if (r > 1) btRetrySpeed(); else { bt.errSpd = ''; bt.retryN = 0; btLiveUi(); }
+    }, 2000);
   }
   async function btTargets(s){
     if (!btDriving()) return;
     if (!(await btControl())) return;
     bt.err = '';
-    if (bt.canIncl) await btSend([0x03, ...s16(Math.round(clamp(s.p, bt.range.pmin, bt.range.pmax) * 10))]);
-    if (bt.canSpeed) await btSend([0x02, ...u16(Math.round(clamp(s.v, bt.range.vmin, bt.range.vmax) * 100))]);
+    bt.target = { v: s.v, p: s.p, at: Date.now() };
+    clearTimeout(bt.retryT); bt.retryN = 0;
+    if (bt.canIncl){ const r = await btSend(incBytes(s.p)); bt.errInc = r > 1 ? `pente refusée (${CP_ERR[r] || 'erreur'})` : ''; }
+    if (bt.canSpeed){
+      const r = await btSend(spdBytes(s.v));
+      bt.lastSpdCode = r; bt.lastSpdSend = Date.now();
+      if (r > 1) btRetrySpeed(); else bt.errSpd = '';
+    }
     btLiveUi();
   }
+  // Pendant les 20 premières secondes d'un palier, si la vitesse réelle reste loin de la consigne, on la renvoie
+  function btWatch(){
+    if (!rs || !rs.playing || !btDriving() || !bt.canSpeed || !bt.target || bt.live.v == null || bt.retryT && bt.retryN) return;
+    const now = Date.now();
+    if (now - bt.target.at > 20000 || now - (bt.lastSpdSend || 0) < 4000) return;
+    if (Math.abs(bt.live.v - bt.target.v) > 0.3){
+      bt.lastSpdSend = now;
+      btSend(spdBytes(bt.target.v)).then(r => { bt.lastSpdCode = r; if (r <= 1){ bt.errSpd = ''; btLiveUi(); } });
+    }
+  }
   async function btStart(s){ if (!btDriving() || !(await btControl())) return; await btSend([0x07]); await btTargets(s); }
-  async function btPause(){ if (btDriving()) await btSend([0x08, 0x02]); }
-  async function btStop(){ if (btDriving()) await btSend([0x08, 0x01]); }
+  async function btPause(){ clearTimeout(bt.retryT); if (btDriving()) await btSend([0x08, 0x02]); }
+  async function btStop(){ clearTimeout(bt.retryT); bt.target = null; if (btDriving()) await btSend([0x08, 0x01]); }
 
   function btStatusText(){
     if (!btAvailable()) return 'Bluetooth indisponible dans ce navigateur';
@@ -1403,7 +1433,7 @@ select.txt{appearance:auto}
     if (bt.connected){
       const live = bt.live.v != null ? ` · tapis ${f1.format(bt.live.v)} km/h${bt.live.p != null ? ' · ' + fp(bt.live.p) + ' %' : ''}` : '';
       el.className = 'btbar ok';
-      el.innerHTML = `<i></i><span>${btDriving() ? 'Tapis piloté' : (rs.noDrive ? 'Tapis connecté, non piloté pour cette séance' : 'Tapis connecté, pilotage coupé')}${live}${bt.err ? ` · <b>${esc(bt.err)}</b>` : ''}</span>`;
+      el.innerHTML = `<i></i><span>${btDriving() ? 'Tapis piloté' : (rs.noDrive ? 'Tapis connecté, non piloté pour cette séance' : 'Tapis connecté, pilotage coupé')}${live}${(bt.errSpd || bt.errInc || bt.err) ? ` · <b>${esc([bt.err, bt.errSpd, bt.errInc].filter(Boolean).join(' · '))}</b>` : ''}</span>`;
     } else if (bt.lost){
       el.className = 'btbar lost';
       el.innerHTML = `<i></i><span>Connexion perdue : réglez le tapis à la main</span><button type="button" class="lnk" data-act="bt-toggle">Reconnecter</button>`;
@@ -1508,6 +1538,7 @@ select.txt{appearance:auto}
     if (i !== rs.seg && rs.playing && !manual && rs.elapsed < rs.total) cueChange(p.segs[i]);
     rs.seg = i;
     if (rs.playing && btDriving() && rs.sentSeg !== i && rs.elapsed < rs.total){ rs.sentSeg = i; btTargets(p.segs[i]); }
+    if (!manual) btWatch();
     const s = p.segs[i], nx = p.segs[i + 1];
     const inSeg = rs.elapsed - i * rs.segSec, leftSeg = rs.segSec - inSeg;
     const secLeft = Math.ceil(leftSeg - 1e-6);
