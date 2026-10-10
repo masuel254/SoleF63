@@ -305,6 +305,7 @@ select.txt{appearance:auto}
 <script>
 (() => {
   /* ===================== Constantes et outils ===================== */
+  const PAGE_BUILD = 'diag3';   // change à chaque envoi : affiché à côté de la version
   const N = 18, VMIN = 0.8, VMAX = 18, PMIN = 0, PMAX = 15;
   const KEY = 'solef63.programs.v1';
   const $ = id => document.getElementById(id);
@@ -1255,12 +1256,19 @@ select.txt{appearance:auto}
       await btSetup();
       toast(`${bt.name} connecté`);
     } catch(e){
-      let raw = e && (e.name || e.message) ? `${e.name || 'Erreur'}${e.message ? ' : ' + e.message : ''}` : '';
-      if (!raw){ try { raw = typeof e === 'string' ? e : (JSON.stringify(e) || String(e)); } catch(err){ raw = String(e); } }
+      let raw = '';
+      try {
+        const parts = [`type ${typeof e}`];
+        if (e && typeof e === 'object') parts.push(`classe ${e.constructor && e.constructor.name}`, `nom ${e.name || '-'}`, `message ${e.message || '-'}`, `code ${e.code ?? '-'}`);
+        parts.push(`texte ${String(e) || '-'}`);
+        raw = parts.join(' · ');
+      } catch(err){ raw = 'illisible'; }
       const cancelled = e && e.name === 'NotFoundError' && /cancel|annul/i.test(e.message || '');
       if (bt.dev && !bt.connected){ try { bt.dev.gatt.disconnect(); } catch(err){} }
       if (!cancelled){
-        bt.lastErr = `Échec à l'étape « ${bt.stage} » (${raw})`;
+        let avail = 'inconnue';
+        try { if (navigator.bluetooth.getAvailability) avail = (await navigator.bluetooth.getAvailability()) ? 'oui' : 'non'; } catch(err){ avail = 'erreur'; }
+        bt.lastErr = `Échec à l'étape « ${bt.stage} » (${raw} · Bluetooth disponible : ${avail} · page ${PAGE_BUILD})`;
         btErrorSheet(wide);
       }
     }
@@ -1552,7 +1560,7 @@ select.txt{appearance:auto}
   let versionTxt = '';
   function showVersion(v){
     const m = /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/.exec(v || ''); if (!m) return;
-    versionTxt = `Version du ${m[3]}/${m[2]}/${m[1]} à ${m[4]}h${m[5]}`;
+    versionTxt = `Version du ${m[3]}/${m[2]}/${m[1]} à ${m[4]}h${m[5]} · page ${PAGE_BUILD}`;
     const el = $('appVer'); if (el){ el.textContent = versionTxt; el.title = 'Version ' + v; el.hidden = false; }
   }
   function askVersion(){
