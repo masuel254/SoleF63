@@ -1230,7 +1230,9 @@ select.txt{appearance:auto}
   /* ===================== Tapis connecté (Bluetooth FTMS) =====================
      Protocole standard « Fitness Machine » : le F63 accepte la vitesse et la pente cibles.
      Sur iPhone, Safari ne donne pas accès au Bluetooth : il faut un navigateur qui le fait (Bluefy). */
-  const FTMS = 0x1826, C_FEAT = 0x2acc, C_TREAD = 0x2acd, C_SPD = 0x2ad4, C_INC = 0x2ad5, C_CP = 0x2ad9, C_STATUS = 0x2ada;
+  // Identifiants complets (128 bits) en texte : certains navigateurs (Bluefy) refusent les numéros courts
+  const uuid = n => `0000${n.toString(16).padStart(4, '0')}-0000-1000-8000-00805f9b34fb`;
+  const FTMS = uuid(0x1826), C_FEAT = uuid(0x2acc), C_TREAD = uuid(0x2acd), C_SPD = uuid(0x2ad4), C_INC = uuid(0x2ad5), C_CP = uuid(0x2ad9), C_STATUS = uuid(0x2ada);
   const bt = { dev: null, cp: null, connected: false, connecting: false, lost: false, canSpeed: true, canIncl: true,
     hasControl: false, live: { v: null, p: null }, range: { vmin: VMIN, vmax: VMAX, pmin: PMIN, pmax: PMAX },
     queue: Promise.resolve(), pending: null, err: '', name: '', lastErr: '', stage: '' };
@@ -1253,7 +1255,8 @@ select.txt{appearance:auto}
       await btSetup();
       toast(`${bt.name} connecté`);
     } catch(e){
-      const raw = `${e && e.name ? e.name : 'Erreur'}${e && e.message ? ' : ' + e.message : ''}`;
+      let raw = e && (e.name || e.message) ? `${e.name || 'Erreur'}${e.message ? ' : ' + e.message : ''}` : '';
+      if (!raw){ try { raw = typeof e === 'string' ? e : (JSON.stringify(e) || String(e)); } catch(err){ raw = String(e); } }
       const cancelled = e && e.name === 'NotFoundError' && /cancel|annul/i.test(e.message || '');
       if (bt.dev && !bt.connected){ try { bt.dev.gatt.disconnect(); } catch(err){} }
       if (!cancelled){
