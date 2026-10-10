@@ -308,7 +308,7 @@ select.txt{appearance:auto}
 <script>
 (() => {
   /* ===================== Constantes et outils ===================== */
-  const PAGE_BUILD = 'v8';   // change à chaque envoi : affiché à côté de la version
+  const PAGE_BUILD = 'v9';   // change à chaque envoi : affiché à côté de la version
   const N = 18, VMIN = 0.8, VMAX = 18, PMIN = 0, PMAX = 15;
   const KEY = 'solef63.programs.v1';
   const $ = id => document.getElementById(id);
@@ -465,14 +465,11 @@ select.txt{appearance:auto}
     const segs = [{ v: c.warm[0], p: 0 }, { v: c.warm[1], p: Math.min(1, P) }, ...main, { v: c.cool[0], p: Math.min(1, P) }, { v: c.cool[1], p: 0 }];
     return segs.map(x => ({ v: r1(clamp(x.v, VMIN, c.vmax)), p: Math.round(clamp(x.p, PMIN, c.pmax)) }));
   }
-  // Spécial F63 : 1er et dernier palier plus lents, paliers 2 à 17 à vitesse identique, seule la pente varie.
-  // k de -1 à 0 : la vitesse de croisière baisse (objectif bas, pente nulle)
-  // k de 0 à 1  : la pente monte de 0 à 15 % à vitesse de croisière
-  // k de 1 à 2  : pente au maximum, la vitesse monte jusqu'au plafond
+  // Spécial F63 : vitesse choisie (o.v63) identique des paliers 2 à 17, 1er et dernier palier à 75 %.
+  // Seule la pente varie : k de 0 à 1 fait monter la pente de 0 à 15 %.
+  function f63Speed(type){ const c = modeCfg(type), v = type === 'run' ? S.create.v63r : S.create.v63w; return r1(clamp(v || .83 * c.vmax, VMIN, c.vmax)); }
   function buildF63(o, k){
-    const c = modeCfg(o.type), vCruise = .83 * c.vmax, vLow = .62 * c.vmax;
-    const V = k < 0 ? vCruise + (vCruise - vLow) * k : k <= 1 ? vCruise : vCruise + (c.vmax - vCruise) * (k - 1);
-    const P = c.pmax * clamp(k, 0, 1);
+    const c = modeCfg(o.type), V = o.v63, P = c.pmax * clamp(k, 0, 1);
     const main = [];
     for (let i = 0; i < 16; i++){
       let p;
@@ -482,15 +479,15 @@ select.txt{appearance:auto}
       main.push({ v: V, p });
     }
     const segs = [{ v: V * .75, p: 0 }, ...main, { v: V * .75, p: 0 }];
-    return segs.map(x => ({ v: r1(clamp(x.v, VMIN, c.vmax)), p: Math.round(clamp(x.p, PMIN, c.pmax)) }));
+    return segs.map(x => ({ v: r1(clamp(x.v, VMIN, VMAX)), p: Math.round(clamp(x.p, PMIN, c.pmax)) }));
   }
   function generateAuto(o){
-    const build = o.f63 ? buildF63 : buildAuto, kMin = o.f63 ? -1 : 0;
+    const build = o.f63 ? buildF63 : buildAuto, kMin = 0, kMax = o.f63 ? 1 : 2;
     const kc = segs => compute({ minutes: o.minutes, segs }).kcal;
-    const s0 = build(o, kMin), s2 = build(o, 2), min = kc(s0), max = kc(s2);
+    const s0 = build(o, kMin), s2 = build(o, kMax), min = kc(s0), max = kc(s2);
     if (o.kcal >= max) return { segs: s2, kcal: max, status: o.kcal > max * 1.02 ? 'high' : 'ok', min, max };
     if (o.kcal <= min) return { segs: s0, kcal: min, status: o.kcal < min * .98 ? 'low' : 'ok', min, max };
-    let lo = kMin, hi = 2;
+    let lo = kMin, hi = kMax;
     for (let n = 0; n < 40; n++){ const mid = (lo + hi) / 2; if (kc(build(o, mid)) < o.kcal) lo = mid; else hi = mid; }
     const a = build(o, lo), b = build(o, hi);
     const segs = Math.abs(kc(a) - o.kcal) <= Math.abs(kc(b) - o.kcal) ? a : b;
@@ -500,13 +497,13 @@ select.txt{appearance:auto}
   /* ===================== État de l'interface ===================== */
   const S = {
     tab: 'list', view: 'list', detailId: null,
-    create: Object.assign({ mode: 'auto', minutes: 40, kcal: 400, type: 'walk', variant: 'intervals', f63: true, name: '', nameTouched: false,
+    create: Object.assign({ mode: 'auto', minutes: 40, kcal: 400, type: 'walk', variant: 'intervals', f63: true, v63w: null, v63r: null, name: '', nameTouched: false,
       mMinutes: 40, mStart: 'flat', mCopy: null, mName: '' }, ls.get(KEY + '.auto', {}), { nameTouched: false, name: '' }),
     edit: null, res: null
   };
   if (!['walk', 'run'].includes(S.create.type)) S.create.type = S.create.mode === 'run' ? 'run' : 'walk';
   if (!['auto', 'manual'].includes(S.create.mode)) S.create.mode = 'auto';
-  const saveCreatePrefs = () => { const c = S.create; ls.set(KEY + '.auto', { mode: c.mode, minutes: c.minutes, kcal: c.kcal, type: c.type, variant: c.variant, f63: c.f63, mMinutes: c.mMinutes, mStart: c.mStart }); };
+  const saveCreatePrefs = () => { const c = S.create; ls.set(KEY + '.auto', { mode: c.mode, minutes: c.minutes, kcal: c.kcal, type: c.type, variant: c.variant, f63: c.f63, v63w: c.v63w, v63r: c.v63r, mMinutes: c.mMinutes, mStart: c.mStart }); };
 
   /* ===================== Navigation ===================== */
   const TABS = [
@@ -658,7 +655,8 @@ select.txt{appearance:auto}
           <div class="field"><span class="lab">Objectif</span>${stepHtml('ckcal', c.kcal, 'kcal')}</div>
           <div class="field"><span class="lab">Type<small id="c-max"></small></span><div class="mini-seg">${segBtns('ctype', c.type, [['walk', 'Marche'], ['run', 'Course']])}</div></div>
           <div class="field form-forme"><span class="lab">Forme${c.f63 ? '<small>appliquée à la pente</small>' : ''}</span><div class="mini-seg">${segBtns('cvar', c.variant, Object.entries(VARIANTS))}</div></div>
-          <div class="field"><span class="lab">Spécial F63<small>Vitesse fixe, seule la pente varie (vitesse réduite au 1er et dernier palier)</small></span><button type="button" class="sw" role="switch" data-cf63 aria-checked="${c.f63}" aria-label="Spécial F63"></button></div>
+          <div class="field"><span class="lab">Spécial F63<small>Vitesse fixe, seule la pente varie</small></span><button type="button" class="sw" role="switch" data-cf63 aria-checked="${c.f63}" aria-label="Spécial F63"></button></div>
+          ${c.f63 ? `<div class="field"><span class="lab">Vitesse<small>paliers 2 à 17 · 1er et dernier à 75 %</small></span>${stepHtml('cv63', f1.format(f63Speed(c.type)), 'km/h')}</div>` : ''}
         </div>
         <div class="card pv">
           <div id="pv-chart"></div>
@@ -700,7 +698,8 @@ select.txt{appearance:auto}
     $('c-max').textContent = `max ${f1.format(modeCfg(c.type).vmax)} km/h · Réglages`;
     if (!c.nameTouched){ c.name = autoName(); }
     const ni = $('c-name'); if (ni && document.activeElement !== ni) ni.value = c.name;
-    const res = S.res = generateAuto({ minutes: c.minutes, kcal: c.kcal, type: c.type, variant: c.variant, f63: c.f63 });
+    const res = S.res = generateAuto({ minutes: c.minutes, kcal: c.kcal, type: c.type, variant: c.variant, f63: c.f63, v63: f63Speed(c.type) });
+    const sv = $('st-cv63'); if (sv) sv.innerHTML = `${f1.format(f63Speed(c.type))}<small>km/h</small>`;
     const cc = compute({ minutes: c.minutes, segs: res.segs });
     $('pv-chart').innerHTML = profileSvg(res.segs, { W: 340, H: 96, dots: true, lw: 2 });
     $('pv-k').textContent = f0.format(res.kcal);
@@ -715,8 +714,10 @@ select.txt{appearance:auto}
     st.innerHTML = '<i></i><span>' + (res.status === 'ok'
       ? (diff <= 1 ? 'Objectif atteint.' : `Objectif atteint à ${diff} kcal près.`)
       : res.status === 'high'
-        ? `Trop élevé pour ${c.minutes} min en ${lab} : ce programme est au maximum (${f0.format(res.max)} kcal). Allongez la durée${c.type === 'walk' ? ' ou passez en course' : ''}.`
-        : `Objectif bas pour ${c.minutes} min en ${lab} : même au plus doux, la séance brûle ${f0.format(res.min)} kcal. Réduisez la durée${c.type === 'run' ? ' ou passez en marche' : ''}.`) + '</span>';
+        ? (c.f63 ? `Trop élevé à ${f1.format(f63Speed(c.type))} km/h : même avec la pente au maximum, ${f0.format(res.max)} kcal. Augmentez la vitesse ou la durée.`
+          : `Trop élevé pour ${c.minutes} min en ${lab} : ce programme est au maximum (${f0.format(res.max)} kcal). Allongez la durée${c.type === 'walk' ? ' ou passez en course' : ''}.`)
+        : (c.f63 ? `Objectif bas à ${f1.format(f63Speed(c.type))} km/h : même à plat, ${f0.format(res.min)} kcal. Baissez la vitesse ou la durée.`
+          : `Objectif bas pour ${c.minutes} min en ${lab} : même au plus doux, la séance brûle ${f0.format(res.min)} kcal. Réduisez la durée${c.type === 'run' ? ' ou passez en marche' : ''}.`)) + '</span>';
     saveCreatePrefs();
   }
 
@@ -882,6 +883,10 @@ select.txt{appearance:auto}
           <div class="field"><span class="lab">Limites</span><span class="val">0,8 à 18 km/h · 0 à 15 %</span></div>
         </div>
         <span class="small" style="padding:0 4px">${btAvailable() ? 'Une seule appli à la fois peut être connectée au tapis : fermez Kinomap et Sole+ avant de connecter.' : 'Sur iPhone, le Bluetooth n’est accessible que depuis le navigateur Bluefy. <button type="button" class="lnk" data-act="bt-help">Comment faire</button>'}</span>
+        <span class="grp-t" style="margin-top:8px">Application</span>
+        <div class="card">
+          <div class="field"><span class="lab">Mise à jour<small id="updSt">Vérifiée à chaque ouverture</small></span><button type="button" class="lnk" data-act="upd-check">Rechercher</button></div>
+        </div>
         <div class="ver" id="appVer" hidden></div>
       </div>`;
   }
@@ -1019,6 +1024,7 @@ select.txt{appearance:auto}
     switch (a){
       case 'new': S.tab = 'create'; go('create'); break;
       case 'del-all': deleteAllSheet(); break;
+      case 'upd-check': checkUpdate(); break;
       case 'back': go('list', { push: false }); break;
       case 'run': if (p) startRun(p); break;
       case 'edit': if (p) openEditor(p, { returnTo: 'detail' }); break;
@@ -1085,6 +1091,7 @@ select.txt{appearance:auto}
     const [key, d] = spec.split(':'), dir = +d;
     if (key === 'cmin'){ S.create.minutes = clamp(S.create.minutes + dir, 5, 240); refreshCreate(); return true; }
     if (key === 'ckcal'){ S.create.kcal = clamp(Math.round((S.create.kcal + dir * 10) / 10) * 10, 30, 3000); refreshCreate(); return true; }
+    if (key === 'cv63'){ const t = S.create.type, c = modeCfg(t), k = t === 'run' ? 'v63r' : 'v63w', b = f63Speed(t); S.create[k] = r1(clamp(b + dir * .1, VMIN, c.vmax)); refreshCreate(); return S.create[k] !== b; }
     if (key === 'mmin'){ S.create.mMinutes = clamp(S.create.mMinutes + dir, 5, 240); saveCreatePrefs(); refreshCreate(); return true; }
     if (key === 'emin'){ const d2 = S.edit.draft; const b = d2.minutes; d2.minutes = clamp(d2.minutes + dir, 5, 240); refreshEdit(); return b !== d2.minutes; }
     if (key === 'sw'){ settings.weight = clamp(Math.round(settings.weight + dir), 30, 250); saveSettings(); $('st-sw').innerHTML = `${fp(settings.weight)}<small>kg</small>`; return true; }
@@ -1669,9 +1676,27 @@ select.txt{appearance:auto}
   /* ===================== Mise à jour automatique et version ===================== */
   let pendingReload = false;
   function reloadForUpdate(){ try { sessionStorage.setItem('solef63.updated', '1'); } catch(e){} location.reload(); }
-  let versionTxt = '';
+  let versionTxt = '', swReg = null, curVersion = '';
+  // Bouton « Rechercher » : compare la version en ligne à celle en service
+  async function checkUpdate(){
+    const st = $('updSt'), set = t => { if (st) st.textContent = t; };
+    set('Recherche…');
+    try {
+      const t = await fetch('sw.js?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '');
+      const m = /const VERSION = '([^']+)'/.exec(t);
+      if (!m) throw 0;
+      if (curVersion && m[1] === curVersion){ set('Vous avez la dernière version'); toast('Déjà à jour'); return; }
+      set('Nouvelle version trouvée, installation…'); toast('Mise à jour en cours…');
+      if (swReg){
+        await swReg.update().catch(() => {});
+        // Le rechargement suit le changement de service worker ; filet de sécurité si rien ne se passe
+        setTimeout(() => { if (!rs) reloadForUpdate(); }, 4000);
+      } else reloadForUpdate();
+    } catch(e){ set('Pas de connexion'); toast('Recherche impossible : pas de connexion'); }
+  }
   function showVersion(v){
     const m = /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/.exec(v || ''); if (!m) return;
+    curVersion = v;
     versionTxt = `Version du ${m[3]}/${m[2]}/${m[1]} à ${m[4]}h${m[5]} · page ${PAGE_BUILD}`;
     const el = $('appVer'); if (el){ el.textContent = versionTxt; el.title = 'Version ' + v; el.hidden = false; }
   }
@@ -1695,6 +1720,7 @@ select.txt{appearance:auto}
       reloadForUpdate();
     });
     navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
+      swReg = reg;
       reg.update().catch(() => {});
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
     }).catch(() => {});

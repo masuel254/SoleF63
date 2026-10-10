@@ -51,6 +51,10 @@ L'appli est publiée par GitHub Pages depuis la branche `main` (Settings → Pag
 - **iPhone** (Safari) : bouton Partager → *Sur l'écran d'accueil*.
 - **Android** (Chrome) : menu ⋮ → *Installer l'application*.
 
+## Rechercher une mise à jour
+
+Réglages, rubrique Application, **Rechercher** : l'appli compare sa version à celle en ligne et, si une nouvelle existe, l'installe et se recharge sans avoir à la quitter.
+
 ## Mettre à jour le site
 
 Chaque envoi sur `main` est publié en une à deux minutes. Avant chaque envoi, la ligne `const VERSION` de `sw.js` reçoit la date et l'heure du jour : c'est ce changement qui déclenche la mise à jour sur les téléphones. En cas d'envoi à la main (**Add file → Upload files**), penser à changer cette date.
@@ -77,4 +81,4 @@ Mode séance : deux boutons indépendants, **Bips** et **Voix** (les deux, l'un,
 
 ## Spécial F63
 
-Case cochée par défaut dans **Créer** (automatique). Comme le F63 ne laisse pas l'appli piloter la vitesse, le programme garde une vitesse unique sur les 16 paliers centraux ; seuls le premier et le dernier palier sont plus lents (échauffement, retour au calme). L'effort vient de la pente, qui suit la forme choisie (intervalles, pyramide, régulier). Décochée : création habituelle, vitesse variable à chaque palier.
+Case cochée par défaut dans **Créer** (automatique). Comme le F63 ne laisse pas l'appli piloter la vitesse, le programme garde la vitesse choisie (réglage **Vitesse** avec + / −, mémorisé séparément pour la marche et la course, plafonné à la vitesse max de Réglages) sur les 16 paliers centraux ; seuls le premier et le dernier palier sont plus lents (échauffement, retour au calme). L'effort vient de la pente, qui suit la forme choisie (intervalles, pyramide, régulier). Décochée : création habituelle, vitesse variable à chaque palier.
