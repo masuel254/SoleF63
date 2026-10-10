@@ -220,6 +220,9 @@ select.txt{appearance:auto}
 .btbar.ok i{background:var(--ok)} .btbar.ok{color:var(--ink)}
 .btbar.lost i{background:var(--warn)} .btbar.lost{color:var(--warn);border-color:var(--warn)}
 .btbar b{color:var(--warn)}
+.tgt .vguide{display:block;margin-top:6px;font-size:15px;font-weight:700;border-radius:8px;padding:5px 8px;text-transform:none;letter-spacing:0}
+.tgt .vguide.go{background:var(--grade-soft);color:var(--warn)}
+.tgt .vguide.ok{background:var(--ok-soft);color:var(--ok)}
 .sh p b{color:var(--ink)}
 /* Bibliothèque de sons */
 .snd-list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden}
@@ -305,7 +308,7 @@ select.txt{appearance:auto}
 <script>
 (() => {
   /* ===================== Constantes et outils ===================== */
-  const PAGE_BUILD = 'v4';   // change à chaque envoi : affiché à côté de la version
+  const PAGE_BUILD = 'v6';   // change à chaque envoi : affiché à côté de la version
   const N = 18, VMIN = 0.8, VMAX = 18, PMIN = 0, PMAX = 15;
   const KEY = 'solef63.programs.v1';
   const $ = id => document.getElementById(id);
@@ -842,7 +845,7 @@ select.txt{appearance:auto}
         <span class="grp-t" style="margin-top:8px">Tapis Sole F63</span>
         <div class="card">
           <div class="field"><span class="lab">Bluetooth<small data-bt-status class="bt-st">${btStatusText()}</small></span><button type="button" class="lnk" data-act="bt-toggle">${bt.connected ? 'Déconnecter' : 'Connecter'}</button></div>
-          <div class="field"><span class="lab">Piloter vitesse et pente<small id="bt-cap"></small></span><button type="button" class="sw" role="switch" data-sw="drive" aria-checked="${settings.drive}" aria-label="Piloter vitesse et pente"></button></div>
+          <div class="field"><span class="lab">Piloter vitesse et pente<small id="bt-cap"></small>${settings.speedManualFor ? '<button type="button" class="lnk" data-act="bt-retest" style="font-size:13px;text-align:left">Retester la vitesse au prochain démarrage</button>' : ''}</span><button type="button" class="sw" role="switch" data-sw="drive" aria-checked="${settings.drive}" aria-label="Piloter vitesse et pente"></button></div>
           <div class="field"><span class="lab">Limites</span><span class="val">0,8 à 18 km/h · 0 à 15 %</span></div>
         </div>
         <span class="small" style="padding:0 4px">${btAvailable() ? 'Une seule appli à la fois peut être connectée au tapis : fermez Kinomap et Sole+ avant de connecter.' : 'Sur iPhone, le Bluetooth n’est accessible que depuis le navigateur Bluefy. <button type="button" class="lnk" data-act="bt-help">Comment faire</button>'}</span>
@@ -997,6 +1000,7 @@ select.txt{appearance:auto}
       case 'snd-lib': soundSheet(); break;
       case 'bt-toggle': bt.connected ? btDisconnect() : btConnect(); break;
       case 'bt-help': btHelpSheet(); break;
+      case 'bt-retest': settings.speedManualFor = ''; saveSettings(); bt.speedManual = false; render(); toast('La vitesse sera de nouveau envoyée au tapis'); break;
       case 'export': exportProgs(); break;
       case 'import': $('fileImport').click(); break;
     }
@@ -1236,7 +1240,7 @@ select.txt{appearance:auto}
   const FTMS = uuid(0x1826), C_FEAT = uuid(0x2acc), C_TREAD = uuid(0x2acd), C_SPD = uuid(0x2ad4), C_INC = uuid(0x2ad5), C_CP = uuid(0x2ad9), C_STATUS = uuid(0x2ada);
   const bt = { dev: null, cp: null, connected: false, connecting: false, lost: false, canSpeed: true, canIncl: true,
     hasControl: false, live: { v: null, p: null }, range: { vmin: VMIN, vmax: VMAX, pmin: PMIN, pmax: PMAX },
-    queue: Promise.resolve(), pending: null, err: '', errSpd: '', errInc: '', name: '', lastErr: '', stage: '', target: null, retryT: null, retryN: 0, lastSpdSend: 0, lastSpdCode: 0 };
+    queue: Promise.resolve(), pending: null, err: '', errSpd: '', errInc: '', name: '', lastErr: '', stage: '', target: null, rt: { v: { n: 0, t: null }, p: { n: 0, t: null } }, speedManual: false };
   const btAvailable = () => !!(navigator.bluetooth && navigator.bluetooth.requestDevice);
   const btDriving = () => bt.connected && settings.drive && !(rs && rs.noDrive) && (bt.canSpeed || bt.canIncl);
   const u16 = x => [x & 255, (x >> 8) & 255];
@@ -1307,7 +1311,7 @@ select.txt{appearance:auto}
     bt.stage = 'abonnement aux réponses';
     await cp.startNotifications();
     bt.stage = 'prêt';
-    bt.cp = cp; bt.connected = true; bt.lost = false; bt.hasControl = false; bt.err = '';
+    bt.cp = cp; bt.connected = true; bt.lost = false; bt.hasControl = false; bt.err = ''; bt.speedManual = settings.speedManualFor === bt.name;
   }
   function btDisconnect(){
     const d = bt.dev; bt.dev = null;
@@ -1373,17 +1377,23 @@ select.txt{appearance:auto}
   }
   const spdBytes = v => [0x02, ...u16(Math.round(clamp(v, bt.range.vmin, bt.range.vmax) * 100))];
   const incBytes = p => [0x03, ...s16(Math.round(clamp(p, bt.range.pmin, bt.range.pmax) * 10))];
-  // Vitesse refusée (souvent pendant la phase de démarrage du tapis) : nouvel essai toutes les 2 s, 8 fois au plus
-  function btRetrySpeed(){
-    clearTimeout(bt.retryT);
-    if (bt.retryN >= 8 || !bt.target){ bt.errSpd = `vitesse refusée par le tapis (${CP_ERR[bt.lastSpdCode] || 'erreur'})`; btLiveUi(); return; }
-    bt.retryN++;
-    bt.errSpd = `vitesse refusée, nouvel essai ${bt.retryN}/8…`; btLiveUi();
-    bt.retryT = setTimeout(async () => {
+  // Le tapis peut refuser une consigne pendant son démarrage : nouvel essai toutes les 2 s.
+  // Si la vitesse est encore refusée après 8 essais, on passe en vitesse manuelle (le F63 ne pilote que la pente).
+  const RETRY = { v: { max: 8, bytes: () => spdBytes(bt.target.v) }, p: { max: 6, bytes: () => incBytes(bt.target.p) } };
+  function btRetry(k){
+    const st = bt.rt[k];
+    clearTimeout(st.t);
+    if (!bt.target) return;
+    if (st.n >= RETRY[k].max){
+      if (k === 'v'){ bt.speedManual = true; settings.speedManualFor = bt.name; saveSettings(); toast('Ce tapis refuse la vitesse en Bluetooth : la pente reste pilotée, réglez la vitesse sur la console'); }
+      else bt.errInc = 'pente refusée par le tapis';
+      btLiveUi(); return;
+    }
+    st.n++;
+    st.t = setTimeout(async () => {
       if (!rs || !rs.playing || !btDriving() || !bt.target) return;
-      const r = await btSend(spdBytes(bt.target.v));
-      bt.lastSpdCode = r; bt.lastSpdSend = Date.now();
-      if (r > 1) btRetrySpeed(); else { bt.errSpd = ''; bt.retryN = 0; btLiveUi(); }
+      const r = await btSend(RETRY[k].bytes());
+      if (r > 1) btRetry(k); else { st.n = 0; if (k === 'p') bt.errInc = ''; btLiveUi(); }
     }, 2000);
   }
   async function btTargets(s){
@@ -1391,28 +1401,15 @@ select.txt{appearance:auto}
     if (!(await btControl())) return;
     bt.err = '';
     bt.target = { v: s.v, p: s.p, at: Date.now() };
-    clearTimeout(bt.retryT); bt.retryN = 0;
-    if (bt.canIncl){ const r = await btSend(incBytes(s.p)); bt.errInc = r > 1 ? `pente refusée (${CP_ERR[r] || 'erreur'})` : ''; }
-    if (bt.canSpeed){
-      const r = await btSend(spdBytes(s.v));
-      bt.lastSpdCode = r; bt.lastSpdSend = Date.now();
-      if (r > 1) btRetrySpeed(); else bt.errSpd = '';
-    }
+    ['v', 'p'].forEach(k => { clearTimeout(bt.rt[k].t); bt.rt[k].n = 0; });
+    if (bt.canIncl){ const r = await btSend(incBytes(s.p)); if (r > 1) btRetry('p'); else bt.errInc = ''; }
+    if (bt.canSpeed && !bt.speedManual){ const r = await btSend(spdBytes(s.v)); if (r > 1) btRetry('v'); }
     btLiveUi();
   }
-  // Pendant les 20 premières secondes d'un palier, si la vitesse réelle reste loin de la consigne, on la renvoie
-  function btWatch(){
-    if (!rs || !rs.playing || !btDriving() || !bt.canSpeed || !bt.target || bt.live.v == null || bt.retryT && bt.retryN) return;
-    const now = Date.now();
-    if (now - bt.target.at > 20000 || now - (bt.lastSpdSend || 0) < 4000) return;
-    if (Math.abs(bt.live.v - bt.target.v) > 0.3){
-      bt.lastSpdSend = now;
-      btSend(spdBytes(bt.target.v)).then(r => { bt.lastSpdCode = r; if (r <= 1){ bt.errSpd = ''; btLiveUi(); } });
-    }
-  }
+  const speedPiloted = () => bt.connected && bt.canSpeed && !bt.speedManual;
   async function btStart(s){ if (!btDriving() || !(await btControl())) return; await btSend([0x07]); await btTargets(s); }
-  async function btPause(){ clearTimeout(bt.retryT); if (btDriving()) await btSend([0x08, 0x02]); }
-  async function btStop(){ clearTimeout(bt.retryT); bt.target = null; if (btDriving()) await btSend([0x08, 0x01]); }
+  async function btPause(){ clearTimeout(bt.rt.v.t); clearTimeout(bt.rt.p.t); if (btDriving()) await btSend([0x08, 0x02]); }
+  async function btStop(){ clearTimeout(bt.rt.v.t); clearTimeout(bt.rt.p.t); bt.target = null; if (btDriving()) await btSend([0x08, 0x01]); }
 
   function btStatusText(){
     if (!btAvailable()) return 'Bluetooth indisponible dans ce navigateur';
@@ -1425,15 +1422,29 @@ select.txt{appearance:auto}
   function btRefreshUi(){
     document.querySelectorAll('[data-bt-status]').forEach(el => { el.textContent = btStatusText(); el.className = 'bt-st' + (bt.connected ? ' ok' : bt.lost ? ' lost' : bt.lastErr ? ' err' : ''); });
     document.querySelectorAll('[data-act="bt-toggle"]').forEach(b => { b.textContent = bt.connected ? 'Déconnecter' : (bt.connecting ? 'Connexion…' : 'Connecter'); });
-    const cap = $('bt-cap'); if (cap) cap.textContent = bt.connected ? `Vitesse ${bt.canSpeed ? 'pilotée' : 'non pilotable'} · pente ${bt.canIncl ? 'pilotée' : 'non pilotable'}` : '';
+    const cap = $('bt-cap'); if (cap) cap.textContent = bt.connected ? `Vitesse ${speedPiloted() ? 'pilotée' : 'à la console'} · pente ${bt.canIncl ? 'pilotée' : 'non pilotable'}` : '';
     btLiveUi();
   }
   function btLiveUi(){
     const el = $('rBt'); if (!el || !rs) return;
+    // Guide de vitesse : quand la vitesse n'est pas pilotée, on compare la vitesse réelle à la consigne
+    const g = $('rVg');
+    if (g){
+      const target = rs.p.segs[rs.seg].v;
+      if (bt.connected && !speedPiloted() && bt.live.v != null && rs.playing){
+        const d = target - bt.live.v;
+        g.hidden = false;
+        if (Math.abs(d) <= 0.15){ g.className = 'vguide ok'; g.textContent = `✓ tapis à ${f1.format(bt.live.v)}`; }
+        else { g.className = 'vguide go'; g.textContent = `${d > 0 ? '▲ Accélérez' : '▼ Ralentissez'} : ${f1.format(bt.live.v)} → ${f1.format(target)}`; }
+      } else g.hidden = true;
+    }
     if (bt.connected){
       const live = bt.live.v != null ? ` · tapis ${f1.format(bt.live.v)} km/h${bt.live.p != null ? ' · ' + fp(bt.live.p) + ' %' : ''}` : '';
+      const what = !btDriving() ? (rs.noDrive ? 'Tapis connecté, non piloté pour cette séance' : 'Tapis connecté, pilotage coupé')
+        : speedPiloted() ? 'Tapis piloté' : 'Pente pilotée · vitesse à la console';
+      const errs = [bt.err, bt.errInc].filter(Boolean).join(' · ');
       el.className = 'btbar ok';
-      el.innerHTML = `<i></i><span>${btDriving() ? 'Tapis piloté' : (rs.noDrive ? 'Tapis connecté, non piloté pour cette séance' : 'Tapis connecté, pilotage coupé')}${live}${(bt.errSpd || bt.errInc || bt.err) ? ` · <b>${esc([bt.err, bt.errSpd, bt.errInc].filter(Boolean).join(' · '))}</b>` : ''}</span>`;
+      el.innerHTML = `<i></i><span>${what}${live}${errs ? ` · <b>${esc(errs)}</b>` : ''}</span>`;
     } else if (bt.lost){
       el.className = 'btbar lost';
       el.innerHTML = `<i></i><span>Connexion perdue : réglez le tapis à la main</span><button type="button" class="lnk" data-act="bt-toggle">Reconnecter</button>`;
@@ -1473,7 +1484,7 @@ select.txt{appearance:auto}
       <div><div class="clock" id="rClock">0:00</div><div class="clock-s" id="rSub"></div></div>
       <div class="pbar"><i id="rBar"></i></div>
       <div class="big2">
-        <div class="tgt v"><span>Vitesse km/h</span><b id="rV"></b><em id="rVn"></em></div>
+        <div class="tgt v"><span>Vitesse km/h</span><b id="rV"></b><em id="rVn"></em><span class="vguide" id="rVg" hidden></span></div>
         <div class="tgt p"><span>Pente %</span><b id="rP"></b><em id="rPn"></em></div>
       </div>
       <div id="rStrip"></div>
@@ -1538,7 +1549,7 @@ select.txt{appearance:auto}
     if (i !== rs.seg && rs.playing && !manual && rs.elapsed < rs.total) cueChange(p.segs[i]);
     rs.seg = i;
     if (rs.playing && btDriving() && rs.sentSeg !== i && rs.elapsed < rs.total){ rs.sentSeg = i; btTargets(p.segs[i]); }
-    if (!manual) btWatch();
+    if (bt.connected && !speedPiloted()) btLiveUi();
     const s = p.segs[i], nx = p.segs[i + 1];
     const inSeg = rs.elapsed - i * rs.segSec, leftSeg = rs.segSec - inSeg;
     const secLeft = Math.ceil(leftSeg - 1e-6);

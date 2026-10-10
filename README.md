@@ -19,7 +19,7 @@ Modification d'un programme : écran dédié avec **Annuler / Enregistrer**, une
 
 ## Pilotage du tapis (Bluetooth)
 
-Le Sole F63 accepte le protocole standard FTMS : l'appli peut régler elle-même la vitesse et la pente.
+Le Sole F63 accepte le protocole standard FTMS. Testé sur le tapis : il accepte la **pente** mais refuse la **vitesse** (réponse « contrôle refusé »). L'appli pilote donc la pente, et pour la vitesse affiche l'écart en direct sous la consigne (« ▲ Accélérez : 1,0 → 4,2 », puis ✓ en vert) en lisant la vitesse réelle du tapis. Ce refus est mémorisé ; Réglages, « Retester la vitesse » pour réessayer.
 
 - **Connexion** : Réglages ou onglet Séance, « Connecter ». Une seule appli à la fois peut être connectée au tapis (fermer Kinomap et Sole+).
 - **Navigateur** : Chrome sur Android ou ordinateur. Sur iPhone, Safari et l'appli installée sur l'écran d'accueil n'ont pas accès au Bluetooth : utiliser le navigateur gratuit **Bluefy** et y ouvrir l'adresse du site. Bluefy a ses propres données : exporter les programmes puis les importer dans Bluefy.
