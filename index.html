@@ -196,7 +196,7 @@ select.txt{appearance:auto}
 .cs.v button,.cs.v input{color:var(--speed)} .cs.p button,.cs.p input{color:var(--grade)}
 
 /* Feuilles (bas d'écran) */
-#sheet{position:fixed;inset:0;z-index:40;display:flex;align-items:flex-end;justify-content:center;background:var(--scrim)}
+#sheet{position:fixed;inset:0;z-index:55;display:flex;align-items:flex-end;justify-content:center;background:var(--scrim)}
 .sh{width:100%;max-width:600px;max-height:88%;overflow-y:auto;background:var(--surface);border-radius:18px 18px 0 0;padding:10px 16px calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px}
 .sh .grab{width:40px;height:5px;border-radius:3px;background:var(--line);align-self:center;margin-bottom:4px}
 .sh h3{margin:0;font-family:var(--f-display);font-size:24px}
@@ -208,6 +208,17 @@ select.txt{appearance:auto}
 .sh .pick .m{color:var(--muted);font-size:13.5px}
 .sh .pick button[aria-current="true"] .nm{color:var(--speed)}
 
+/* Tapis connecté */
+.bt-st{font-size:12.5px;color:var(--muted)}
+.bt-st.ok{color:var(--ok);font-weight:600}
+.bt-st.lost{color:var(--warn);font-weight:600}
+.btbar{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:7px 10px;flex:none}
+.btbar i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.btbar span{flex:1;min-width:0}
+.btbar.ok i{background:var(--ok)} .btbar.ok{color:var(--ink)}
+.btbar.lost i{background:var(--warn)} .btbar.lost{color:var(--warn);border-color:var(--warn)}
+.btbar b{color:var(--warn)}
+.sh p b{color:var(--ink)}
 /* Bibliothèque de sons */
 .snd-list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .snd-row{display:grid;grid-template-columns:minmax(0,1fr) 52px;align-items:stretch;border-top:1px solid var(--line)}
@@ -363,7 +374,7 @@ select.txt{appearance:auto}
   function saveProgs(){ clearTimeout(saveT); if (!ls.set(KEY, progs)) toast('Stockage indisponible : les changements seront perdus à la fermeture'); }
 
   // Réglages globaux (poids unique, vitesses max, sons). Migration depuis l'ancienne version.
-  const settings = Object.assign({ weight: null, walkMax: 5.8, runMax: 11, beep: true, voice: false, sound: 'doux' }, ls.get(KEY + '.settings', {}));
+  const settings = Object.assign({ weight: null, walkMax: 5.8, runMax: 11, beep: true, voice: false, sound: 'doux', drive: true }, ls.get(KEY + '.settings', {}));
   if (settings.weight == null){
     settings.weight = legacyWeight || 120;
     Object.assign(settings, ls.get(KEY + '.sound', {}));
@@ -518,6 +529,7 @@ select.txt{appearance:auto}
     if (S.view === 'create') refreshCreate();
     if (S.view === 'edit') refreshEdit();
     if (S.view === 'settings') askVersion();
+    btRefreshUi();
   }
 
   /* ===================== Vue : Programmes ===================== */
@@ -789,6 +801,7 @@ select.txt{appearance:auto}
           ${profileSvg(p.segs, { W: 340, H: 110, minutes: p.minutes, dots: true, lw: 2 })}
           <span class="small">${f0.format(p.minutes)} min · ${f2.format(c.dist)} km · ${f0.format(c.kcal)} kcal · vitesse moy. ${f1.format(c.avgV)} (max ${f1.format(c.vMax)}) km/h · pente moy. ${f1.format(c.avgP)} (max ${fp(c.pMax)}) %</span>
         </div>
+        <div class="card"><div class="field"><span class="lab">Tapis<small data-bt-status class="bt-st">${btStatusText()}</small></span><button type="button" class="lnk" data-act="bt-toggle">${bt.connected ? 'Déconnecter' : 'Connecter'}</button></div></div>
         <button type="button" class="btn pri" data-act="s-run" data-id="${p.id}">${ICON.play}Démarrer</button>
         <button type="button" class="btn sm" data-act="s-pick">Choisir un autre programme</button>
         <span class="grp-t" style="margin-top:6px">Sons pendant la séance</span>
@@ -824,7 +837,12 @@ select.txt{appearance:auto}
         </div>
         <input type="file" id="fileImport" accept=".json,application/json" hidden>
         <span class="grp-t" style="margin-top:8px">Tapis Sole F63</span>
-        <div class="card"><div class="field"><span class="lab">Limites</span><span class="val">0,8 à 18 km/h · 0 à 15 %</span></div></div>
+        <div class="card">
+          <div class="field"><span class="lab">Bluetooth<small data-bt-status class="bt-st">${btStatusText()}</small></span><button type="button" class="lnk" data-act="bt-toggle">${bt.connected ? 'Déconnecter' : 'Connecter'}</button></div>
+          <div class="field"><span class="lab">Piloter vitesse et pente<small id="bt-cap"></small></span><button type="button" class="sw" role="switch" data-sw="drive" aria-checked="${settings.drive}" aria-label="Piloter vitesse et pente"></button></div>
+          <div class="field"><span class="lab">Limites</span><span class="val">0,8 à 18 km/h · 0 à 15 %</span></div>
+        </div>
+        <span class="small" style="padding:0 4px">${btAvailable() ? 'Une seule appli à la fois peut être connectée au tapis : fermez Kinomap et Sole+ avant de connecter.' : 'Sur iPhone, le Bluetooth n’est accessible que depuis le navigateur Bluefy. <button type="button" class="lnk" data-act="bt-help">Comment faire</button>'}</span>
         <div class="ver" id="appVer" hidden></div>
       </div>`;
   }
@@ -927,7 +945,8 @@ select.txt{appearance:auto}
   /* ===================== Actions (délégation) ===================== */
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-act],[data-open],[data-dur],[data-cmode],[data-ctype],[data-cvar],[data-mstart],[data-snd],[data-sw]');
-    if (!t || t.closest('#run')) return;
+    if (!t) return;
+    if (t.closest('#run')){ if (t.dataset.act === 'bt-toggle') btConnect(); return; }
     if (t.dataset.open){ go('detail', { id: t.dataset.open }); return; }
     if (t.dataset.dur != null){ S.dur = +t.dataset.dur; const x = $('durChips') ? $('durChips').scrollLeft : 0; render(); if ($('durChips')) $('durChips').scrollLeft = x; return; }
     if (t.dataset.cmode){ S.create.mode = t.dataset.cmode; saveCreatePrefs(); render(); return; }
@@ -935,7 +954,7 @@ select.txt{appearance:auto}
     if (t.dataset.cvar){ S.create.variant = t.dataset.cvar; t.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); refreshCreate(); return; }
     if (t.dataset.mstart){ S.create.mStart = t.dataset.mstart; if (!S.create.mCopy && progs[0]) S.create.mCopy = progs[0].id; saveCreatePrefs(); render(); return; }
     if (t.dataset.snd){ const k = t.dataset.snd; settings[k] = !settings[k]; saveSettings(); t.setAttribute('aria-pressed', settings[k]); if (k === 'beep' && settings.beep) beepCount(); if (k === 'voice' && settings.voice) say('Voix activée', true); return; }
-    if (t.dataset.sw){ const k = t.dataset.sw; settings[k] = !settings[k]; saveSettings(); t.setAttribute('aria-checked', settings[k]); return; }
+    if (t.dataset.sw){ const k = t.dataset.sw; settings[k] = !settings[k]; saveSettings(); t.setAttribute('aria-checked', settings[k]); btRefreshUi(); return; }
     const a = t.dataset.act, p = byId(S.detailId);
     switch (a){
       case 'new': S.tab = 'create'; go('create'); break;
@@ -973,6 +992,8 @@ select.txt{appearance:auto}
       case 's-pick': pickSheet(id => { lastId = id; ls.set(KEY + '.last', id); render(); }, lastId); break;
       case 'test-snd': testSounds(); break;
       case 'snd-lib': soundSheet(); break;
+      case 'bt-toggle': bt.connected ? btDisconnect() : btConnect(); break;
+      case 'bt-help': btHelpSheet(); break;
       case 'export': exportProgs(); break;
       case 'import': $('fileImport').click(); break;
     }
@@ -1204,6 +1225,163 @@ select.txt{appearance:auto}
     }
   }
 
+  /* ===================== Tapis connecté (Bluetooth FTMS) =====================
+     Protocole standard « Fitness Machine » : le F63 accepte la vitesse et la pente cibles.
+     Sur iPhone, Safari ne donne pas accès au Bluetooth : il faut un navigateur qui le fait (Bluefy). */
+  const FTMS = 0x1826, C_FEAT = 0x2acc, C_TREAD = 0x2acd, C_SPD = 0x2ad4, C_INC = 0x2ad5, C_CP = 0x2ad9, C_STATUS = 0x2ada;
+  const bt = { dev: null, cp: null, connected: false, connecting: false, lost: false, canSpeed: true, canIncl: true,
+    hasControl: false, live: { v: null, p: null }, range: { vmin: VMIN, vmax: VMAX, pmin: PMIN, pmax: PMAX },
+    queue: Promise.resolve(), pending: null, err: '', name: '' };
+  const btAvailable = () => !!(navigator.bluetooth && navigator.bluetooth.requestDevice);
+  const btDriving = () => bt.connected && settings.drive && !(rs && rs.noDrive) && (bt.canSpeed || bt.canIncl);
+  const u16 = x => [x & 255, (x >> 8) & 255];
+  const s16 = x => u16(x < 0 ? x + 65536 : x);
+  const CP_ERR = { 2: 'commande non prise en charge', 3: 'valeur refusée', 4: 'commande échouée', 5: 'contrôle refusé par le tapis' };
+
+  async function btConnect(){
+    if (!btAvailable()){ btHelpSheet(); return; }
+    if (bt.connecting) return;
+    bt.connecting = true; btRefreshUi();
+    try {
+      const dev = await navigator.bluetooth.requestDevice({ filters: [{ services: [FTMS] }], optionalServices: [FTMS] });
+      if (bt.dev && bt.dev !== dev){ try { bt.dev.gatt.disconnect(); } catch(e){} }
+      bt.dev = dev; bt.name = dev.name || 'Tapis';
+      dev.addEventListener('gattserverdisconnected', onBtLost);
+      await btSetup();
+      toast(`${bt.name} connecté`);
+    } catch(e){
+      if (!(e && e.name === 'NotFoundError')) toast('Connexion impossible : vérifiez que le tapis est allumé et que Kinomap ou Sole+ ne sont pas connectés');
+    }
+    bt.connecting = false; btRefreshUi();
+  }
+  async function btSetup(){
+    const server = await bt.dev.gatt.connect();
+    const svc = await server.getPrimaryService(FTMS);
+    try {
+      const f = await (await svc.getCharacteristic(C_FEAT)).readValue();
+      if (f.byteLength >= 8){ const ts = f.getUint32(4, true); bt.canSpeed = !!(ts & 1); bt.canIncl = !!(ts & 2); }
+    } catch(e){ bt.canSpeed = bt.canIncl = true; }
+    try { const r = await (await svc.getCharacteristic(C_SPD)).readValue(); bt.range.vmin = r.getUint16(0, true) / 100 || VMIN; bt.range.vmax = r.getUint16(2, true) / 100 || VMAX; } catch(e){}
+    try { const r = await (await svc.getCharacteristic(C_INC)).readValue(); bt.range.pmin = r.getInt16(0, true) / 10; bt.range.pmax = r.getInt16(2, true) / 10 || PMAX; } catch(e){}
+    try { const t = await svc.getCharacteristic(C_TREAD); t.addEventListener('characteristicvaluechanged', onTread); await t.startNotifications(); } catch(e){}
+    try { const st = await svc.getCharacteristic(C_STATUS); st.addEventListener('characteristicvaluechanged', onStatus); await st.startNotifications(); } catch(e){}
+    const cp = await svc.getCharacteristic(C_CP);
+    cp.addEventListener('characteristicvaluechanged', onCp);
+    await cp.startNotifications();
+    bt.cp = cp; bt.connected = true; bt.lost = false; bt.hasControl = false; bt.err = '';
+  }
+  function btDisconnect(){
+    const d = bt.dev; bt.dev = null;
+    btReset();
+    try { d && d.gatt.disconnect(); } catch(e){}
+    btRefreshUi();
+  }
+  function btReset(){ bt.connected = false; bt.cp = null; bt.hasControl = false; bt.live = { v: null, p: null }; if (bt.pending){ bt.pending.cb(-1); } }
+  async function onBtLost(){
+    if (!bt.dev) return;   // déconnexion volontaire
+    btReset(); bt.lost = true; btRefreshUi();
+    if (rs && !rs.done) toast('Connexion au tapis perdue : il garde sa vitesse et sa pente');
+    for (let k = 0; k < 3 && bt.dev && !bt.connected; k++){   // tentative de reconnexion automatique
+      await new Promise(r => setTimeout(r, 1500 * (k + 1)));
+      try { await btSetup(); bt.lost = false; toast('Tapis reconnecté'); if (rs && rs.playing){ rs.sentSeg = -1; } } catch(e){}
+    }
+    btRefreshUi();
+  }
+  // Point de contrôle : une commande à la fois, on attend la réponse du tapis (3 s max)
+  function cpSend(bytes){
+    bt.queue = bt.queue.then(() => new Promise(res => {
+      if (!bt.cp) return res(-1);
+      let done = false;
+      const fin = code => { if (done) return; done = true; clearTimeout(to); bt.pending = null; res(code); };
+      const to = setTimeout(() => fin(0), 3000);
+      bt.pending = { op: bytes[0], cb: fin };
+      const data = new Uint8Array(bytes);
+      (bt.cp.writeValueWithResponse ? bt.cp.writeValueWithResponse(data) : bt.cp.writeValue(data)).catch(() => fin(-1));
+    }));
+    return bt.queue;
+  }
+  function onCp(e){
+    const dv = e.target.value;
+    if (dv.byteLength >= 3 && dv.getUint8(0) === 0x80 && bt.pending && dv.getUint8(1) === bt.pending.op) bt.pending.cb(dv.getUint8(2));
+  }
+  function onTread(e){
+    const dv = e.target.value; if (dv.byteLength < 2) return;
+    const fl = dv.getUint16(0, true); let o = 2;
+    if (!(fl & 1) && dv.byteLength >= o + 2){ bt.live.v = dv.getUint16(o, true) / 100; o += 2; }
+    if (fl & 2) o += 2;
+    if (fl & 4) o += 3;
+    if ((fl & 8) && dv.byteLength >= o + 2) bt.live.p = dv.getInt16(o, true) / 10;
+    btLiveUi();
+  }
+  function onStatus(e){
+    const dv = e.target.value; if (!dv.byteLength) return;
+    const op = dv.getUint8(0);
+    if (op === 0x02 || op === 0x03){   // arrêté ou mis en pause sur la console, ou clé de sécurité retirée
+      if (rs && rs.playing && !rs.done){ togglePlay({ machine: true }); toast(op === 0x03 ? 'Clé de sécurité retirée : séance en pause' : 'Tapis arrêté sur la console : séance en pause'); }
+    } else if (op === 0xFF){ bt.hasControl = false; }
+  }
+  async function btControl(){
+    if (bt.hasControl) return true;
+    const r = await cpSend([0x00]);
+    bt.hasControl = r === 1 || r === 0;
+    if (!bt.hasControl){ bt.err = CP_ERR[r] || 'pas de réponse du tapis'; btLiveUi(); }
+    return bt.hasControl;
+  }
+  async function btSend(bytes){
+    let r = await cpSend(bytes);
+    if (r === 5){ bt.hasControl = false; if (await btControl()) r = await cpSend(bytes); }
+    if (r > 1){ bt.err = CP_ERR[r] || 'erreur'; btLiveUi(); }
+    return r;
+  }
+  async function btTargets(s){
+    if (!btDriving()) return;
+    if (!(await btControl())) return;
+    bt.err = '';
+    if (bt.canIncl) await btSend([0x03, ...s16(Math.round(clamp(s.p, bt.range.pmin, bt.range.pmax) * 10))]);
+    if (bt.canSpeed) await btSend([0x02, ...u16(Math.round(clamp(s.v, bt.range.vmin, bt.range.vmax) * 100))]);
+    btLiveUi();
+  }
+  async function btStart(s){ if (!btDriving() || !(await btControl())) return; await btSend([0x07]); await btTargets(s); }
+  async function btPause(){ if (btDriving()) await btSend([0x08, 0x02]); }
+  async function btStop(){ if (btDriving()) await btSend([0x08, 0x01]); }
+
+  function btStatusText(){
+    if (!btAvailable()) return 'Bluetooth indisponible dans ce navigateur';
+    if (bt.connecting) return 'Connexion…';
+    if (bt.connected) return `${bt.name} connecté`;
+    if (bt.lost) return 'Connexion perdue';
+    return 'Non connecté';
+  }
+  function btRefreshUi(){
+    document.querySelectorAll('[data-bt-status]').forEach(el => { el.textContent = btStatusText(); el.className = 'bt-st' + (bt.connected ? ' ok' : bt.lost ? ' lost' : ''); });
+    document.querySelectorAll('[data-act="bt-toggle"]').forEach(b => { b.textContent = bt.connected ? 'Déconnecter' : (bt.connecting ? 'Connexion…' : 'Connecter'); });
+    const cap = $('bt-cap'); if (cap) cap.textContent = bt.connected ? `Vitesse ${bt.canSpeed ? 'pilotée' : 'non pilotable'} · pente ${bt.canIncl ? 'pilotée' : 'non pilotable'}` : '';
+    btLiveUi();
+  }
+  function btLiveUi(){
+    const el = $('rBt'); if (!el || !rs) return;
+    if (bt.connected){
+      const live = bt.live.v != null ? ` · tapis ${f1.format(bt.live.v)} km/h${bt.live.p != null ? ' · ' + fp(bt.live.p) + ' %' : ''}` : '';
+      el.className = 'btbar ok';
+      el.innerHTML = `<i></i><span>${btDriving() ? 'Tapis piloté' : (rs.noDrive ? 'Tapis connecté, non piloté pour cette séance' : 'Tapis connecté, pilotage coupé')}${live}${bt.err ? ` · <b>${esc(bt.err)}</b>` : ''}</span>`;
+    } else if (bt.lost){
+      el.className = 'btbar lost';
+      el.innerHTML = `<i></i><span>Connexion perdue : réglez le tapis à la main</span><button type="button" class="lnk" data-act="bt-toggle">Reconnecter</button>`;
+    } else if (btAvailable()){
+      el.className = 'btbar';
+      el.innerHTML = `<i></i><span>Tapis non connecté</span><button type="button" class="lnk" data-act="bt-toggle">Connecter</button>`;
+    } else { el.className = 'btbar'; el.innerHTML = ''; el.hidden = true; return; }
+    el.hidden = false;
+  }
+  function btHelpSheet(){
+    openSheet(`<h3>Piloter le tapis</h3>
+      <p>Ce navigateur ne donne pas accès au Bluetooth. Sur iPhone, Safari et l'appli installée sur l'écran d'accueil ne le permettent pas.</p>
+      <p><b>Solution :</b> installez le navigateur gratuit <b>Bluefy</b> depuis l'App Store, ouvrez-y <b>masuel254.github.io/SoleF63</b>, puis Réglages, Connecter.</p>
+      <p>Bluefy garde ses propres données : exportez vos programmes ici (Réglages, Exporter) puis importez le fichier dans Bluefy.</p>
+      <p>Sur Android, Chrome fonctionne directement.</p>
+      <button type="button" class="btn" data-act="sh-close">Compris</button>`);
+  }
+
   /* ===================== Séance plein écran ===================== */
   const run = $('run');
   let rs = null;
@@ -1221,6 +1399,7 @@ select.txt{appearance:auto}
         <div class="tg" id="rSnd">${sndBtns()}</div>
         <button type="button" class="x" id="rQuit" aria-label="Quitter la séance">${ICON.x}</button>
       </div>
+      <div class="btbar" id="rBt" hidden></div>
       <div><div class="clock" id="rClock">0:00</div><div class="clock-s" id="rSub"></div></div>
       <div class="pbar"><i id="rBar"></i></div>
       <div class="big2">
@@ -1242,7 +1421,8 @@ select.txt{appearance:auto}
     $('rPrev').onclick = () => { rs.elapsed = Math.max(0, (Math.floor(rs.elapsed / rs.segSec) - 1) * rs.segSec); tick(true); };
     $('rNext').onclick = () => { rs.elapsed = Math.min(rs.total - .5, (Math.floor(rs.elapsed / rs.segSec) + 1) * rs.segSec); tick(true); };
     $('rSnd').onclick = e => { const b = e.target.closest('[data-snd]'); if (!b) return; const k = b.dataset.snd; settings[k] = !settings[k]; saveSettings(); b.setAttribute('aria-pressed', settings[k]); if (k === 'voice') { if (settings.voice) say('Voix activée', true); else try { speechSynthesis.cancel(); } catch(err){} } else if (settings.beep) beepCount(); };
-    tick(true); updateRunUi();
+    rs.sentSeg = -1;
+    tick(true); updateRunUi(); btLiveUi();
   }
   function updateRunUi(){
     if (!rs || rs.done) return;
@@ -1251,14 +1431,32 @@ select.txt{appearance:auto}
     $('rQuit').hidden = rs.playing;
     $('rHint').textContent = rs.playing ? 'Mettez en pause pour quitter.' : (rs.elapsed > 0 ? 'En pause.' : 'Prêt.');
   }
-  async function togglePlay(){
+  async function togglePlay(opts = {}){
     if (!rs || rs.done) return;
+    // Premier démarrage piloté : confirmation de sécurité
+    if (!rs.playing && btDriving() && !rs.confirmed && !opts.machine){
+      const s = rs.p.segs[rs.seg];
+      openSheet(`<h3>Le tapis va démarrer</h3>
+        <p>Vitesse ${f1.format(s.v)} km/h, pente ${fp(s.p)} %. Ensuite, la vitesse et la pente changeront toutes seules à chaque palier.</p>
+        <p>Attachez la clé de sécurité. Pour tout arrêter : bouton Stop de la console ou clé de sécurité.</p>
+        <button type="button" class="btn pri" data-act="go-drive">${ICON.play}Démarrer le tapis</button>
+        <button type="button" class="btn" data-act="go-manual">Démarrer sans piloter le tapis</button>
+        <button type="button" class="btn" data-act="sh-close">Annuler</button>`, m => {
+        m.querySelector('[data-act="go-drive"]').onclick = () => { closeSheet(); rs.confirmed = true; togglePlay(); };
+        m.querySelector('[data-act="go-manual"]').onclick = () => { closeSheet(); rs.noDrive = true; btLiveUi(); togglePlay(); };
+      });
+      return;
+    }
     rs.playing = !rs.playing;
     if (rs.playing){
       rs.last = performance.now(); cueStart(rs.elapsed === 0);
       rs.timer = setInterval(() => tick(false), 250);
+      if (btDriving()){ rs.sentSeg = rs.seg; btStart(rs.p.segs[rs.seg]); }
       try { rs.lock = await navigator.wakeLock?.request('screen'); } catch(e){}
-    } else { clearInterval(rs.timer); try { rs.lock?.release(); } catch(e){} }
+    } else {
+      clearInterval(rs.timer); try { rs.lock?.release(); } catch(e){}
+      if (!opts.machine) btPause();
+    }
     updateRunUi();
   }
   function tick(manual){
@@ -1269,6 +1467,7 @@ select.txt{appearance:auto}
     const p = rs.p, i = Math.min(N - 1, Math.floor(rs.elapsed / rs.segSec));
     if (i !== rs.seg && rs.playing && !manual && rs.elapsed < rs.total) cueChange(p.segs[i]);
     rs.seg = i;
+    if (rs.playing && btDriving() && rs.sentSeg !== i && rs.elapsed < rs.total){ rs.sentSeg = i; btTargets(p.segs[i]); }
     const s = p.segs[i], nx = p.segs[i + 1];
     const inSeg = rs.elapsed - i * rs.segSec, leftSeg = rs.segSec - inSeg;
     const secLeft = Math.ceil(leftSeg - 1e-6);
@@ -1288,7 +1487,7 @@ select.txt{appearance:auto}
     if (rs.elapsed >= rs.total && rs.playing){ finishRun(); }
   }
   function finishRun(){
-    clearInterval(rs.timer); rs.playing = false; rs.done = true; cueEnd();
+    clearInterval(rs.timer); rs.playing = false; rs.done = true; cueEnd(); btStop();
     try { rs.lock?.release(); } catch(e){}
     const p = rs.p, c = rs.c;
     run.querySelector('.rw').innerHTML = `<div class="run-top"><span class="nm">${esc(p.name)}</span></div>
@@ -1308,7 +1507,7 @@ select.txt{appearance:auto}
     if (p.temp) $('rKeep').onclick = () => { const d = clone(p); delete d.temp; d.id = uid(); d.updated = Date.now(); progs.push(d); saveProgs(); lastId = d.id; ls.set(KEY + '.last', d.id); toast('Programme enregistré'); $('rKeep').remove(); };
   }
   function stopRun(){
-    if (rs){ clearInterval(rs.timer); try { rs.lock?.release(); } catch(e){} }
+    if (rs){ clearInterval(rs.timer); try { rs.lock?.release(); } catch(e){} if (!rs.done && rs.elapsed > 0) btStop(); }
     try { speechSynthesis.cancel(); } catch(e){}
     run.hidden = true; run.innerHTML = ''; rs = null;
     render();

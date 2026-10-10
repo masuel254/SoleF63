@@ -17,6 +17,19 @@ Modification d'un programme : écran dédié avec **Annuler / Enregistrer**, une
 
 Écran fixe : seule la zone centrale défile, champs en 16 px minimum (pas de zoom ni de décalage latéral sur iPhone). Installable sur téléphone et utilisable hors connexion.
 
+## Pilotage du tapis (Bluetooth)
+
+Le Sole F63 accepte le protocole standard FTMS : l'appli peut régler elle-même la vitesse et la pente.
+
+- **Connexion** : Réglages ou onglet Séance, « Connecter ». Une seule appli à la fois peut être connectée au tapis (fermer Kinomap et Sole+).
+- **Navigateur** : Chrome sur Android ou ordinateur. Sur iPhone, Safari et l'appli installée sur l'écran d'accueil n'ont pas accès au Bluetooth : utiliser le navigateur gratuit **Bluefy** et y ouvrir l'adresse du site. Bluefy a ses propres données : exporter les programmes puis les importer dans Bluefy.
+- **Séance** : au premier démarrage, confirmation de sécurité, puis le tapis démarre et reçoit vitesse et pente à chaque palier (et avec les boutons palier précédent / suivant). Pause et Reprendre mettent le tapis en pause et le relancent ; à la fin, le tapis s'arrête.
+- **Sécurité** : un arrêt sur la console ou le retrait de la clé de sécurité met la séance en pause. Si la connexion est perdue, le tapis garde sa vitesse et sa pente ; l'appli tente de se reconnecter et l'affiche en orange.
+- La vitesse et la pente réelles du tapis s'affichent en haut de l'écran de séance.
+- « Démarrer sans piloter le tapis » ne vaut que pour la séance en cours ; le pilotage se coupe durablement dans Réglages.
+
+Commandes envoyées (point de contrôle FTMS 0x2AD9) : demande de contrôle `00`, démarrage `07`, pente `03` (0,1 %), vitesse `02` (0,01 km/h), pause `08 02`, arrêt `08 01`.
+
 ## Formules (identiques à l'Excel)
 
 ```
