@@ -73,3 +73,8 @@ Mode séance : deux boutons indépendants, **Bips** et **Voix** (les deux, l'un,
 - Bips : 3 bips courts à 3, 2 et 1 seconde de chaque changement de palier, puis un bip long au changement.
 - Voix : annonce la nouvelle consigne au changement (« 3,8 kilomètres heure, pente 2 »), au départ et en fin de séance.
 - Voix seule : la voix compte aussi « trois, deux, un » à la place des bips.
+- Voix en mode **Auto** (Réglages, ou appui répété sur le bouton Voix : Coupée → Auto → Toujours) : ne parle qu'au départ et quand la vitesse change, pour annoncer la nouvelle vitesse.
+
+## Spécial F63
+
+Case cochée par défaut dans **Créer** (automatique). Comme le F63 ne laisse pas l'appli piloter la vitesse, le programme garde une vitesse unique sur les 16 paliers centraux ; seuls le premier et le dernier palier sont plus lents (échauffement, retour au calme). L'effort vient de la pente, qui suit la forme choisie (intervalles, pyramide, régulier). Décochée : création habituelle, vitesse variable à chaque palier.

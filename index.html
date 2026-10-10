@@ -308,7 +308,7 @@ select.txt{appearance:auto}
 <script>
 (() => {
   /* ===================== Constantes et outils ===================== */
-  const PAGE_BUILD = 'v6';   // change à chaque envoi : affiché à côté de la version
+  const PAGE_BUILD = 'v7';   // change à chaque envoi : affiché à côté de la version
   const N = 18, VMIN = 0.8, VMAX = 18, PMIN = 0, PMAX = 15;
   const KEY = 'solef63.programs.v1';
   const $ = id => document.getElementById(id);
@@ -380,7 +380,7 @@ select.txt{appearance:auto}
   function saveProgs(){ clearTimeout(saveT); if (!ls.set(KEY, progs)) toast('Stockage indisponible : les changements seront perdus à la fermeture'); }
 
   // Réglages globaux (poids unique, vitesses max, sons). Migration depuis l'ancienne version.
-  const settings = Object.assign({ weight: null, walkMax: 5.8, runMax: 11, beep: true, voice: false, sound: 'doux', drive: true }, ls.get(KEY + '.settings', {}));
+  const settings = Object.assign({ weight: null, walkMax: 5.8, runMax: 11, beep: true, voice: false, voiceMode: 'all', sound: 'doux', drive: true }, ls.get(KEY + '.settings', {}));
   if (settings.weight == null){
     settings.weight = legacyWeight || 120;
     Object.assign(settings, ls.get(KEY + '.sound', {}));
@@ -465,14 +465,34 @@ select.txt{appearance:auto}
     const segs = [{ v: c.warm[0], p: 0 }, { v: c.warm[1], p: Math.min(1, P) }, ...main, { v: c.cool[0], p: Math.min(1, P) }, { v: c.cool[1], p: 0 }];
     return segs.map(x => ({ v: r1(clamp(x.v, VMIN, c.vmax)), p: Math.round(clamp(x.p, PMIN, c.pmax)) }));
   }
+  // Spécial F63 : 1er et dernier palier plus lents, paliers 2 à 17 à vitesse identique, seule la pente varie.
+  // k de -1 à 0 : la vitesse de croisière baisse (objectif bas, pente nulle)
+  // k de 0 à 1  : la pente monte de 0 à 15 % à vitesse de croisière
+  // k de 1 à 2  : pente au maximum, la vitesse monte jusqu'au plafond
+  function buildF63(o, k){
+    const c = modeCfg(o.type), vCruise = .83 * c.vmax, vLow = .62 * c.vmax;
+    const V = k < 0 ? vCruise + (vCruise - vLow) * k : k <= 1 ? vCruise : vCruise + (c.vmax - vCruise) * (k - 1);
+    const P = c.pmax * clamp(k, 0, 1);
+    const main = [];
+    for (let i = 0; i < 16; i++){
+      let p;
+      if (o.variant === 'intervals') p = i % 2 === 1 ? P : P * .4;
+      else if (o.variant === 'pyramid'){ const f = 1 - Math.abs(i - 7.5) / 7.5; p = P * (.25 + .75 * f); }
+      else p = P * (i % 4 < 2 ? 1 : .8);
+      main.push({ v: V, p });
+    }
+    const segs = [{ v: V * .75, p: 0 }, ...main, { v: V * .75, p: 0 }];
+    return segs.map(x => ({ v: r1(clamp(x.v, VMIN, c.vmax)), p: Math.round(clamp(x.p, PMIN, c.pmax)) }));
+  }
   function generateAuto(o){
+    const build = o.f63 ? buildF63 : buildAuto, kMin = o.f63 ? -1 : 0;
     const kc = segs => compute({ minutes: o.minutes, segs }).kcal;
-    const s0 = buildAuto(o, 0), s2 = buildAuto(o, 2), min = kc(s0), max = kc(s2);
+    const s0 = build(o, kMin), s2 = build(o, 2), min = kc(s0), max = kc(s2);
     if (o.kcal >= max) return { segs: s2, kcal: max, status: o.kcal > max * 1.02 ? 'high' : 'ok', min, max };
     if (o.kcal <= min) return { segs: s0, kcal: min, status: o.kcal < min * .98 ? 'low' : 'ok', min, max };
-    let lo = 0, hi = 2;
-    for (let n = 0; n < 40; n++){ const mid = (lo + hi) / 2; if (kc(buildAuto(o, mid)) < o.kcal) lo = mid; else hi = mid; }
-    const a = buildAuto(o, lo), b = buildAuto(o, hi);
+    let lo = kMin, hi = 2;
+    for (let n = 0; n < 40; n++){ const mid = (lo + hi) / 2; if (kc(build(o, mid)) < o.kcal) lo = mid; else hi = mid; }
+    const a = build(o, lo), b = build(o, hi);
     const segs = Math.abs(kc(a) - o.kcal) <= Math.abs(kc(b) - o.kcal) ? a : b;
     return { segs, kcal: kc(segs), status: 'ok', min, max };
   }
@@ -480,13 +500,13 @@ select.txt{appearance:auto}
   /* ===================== État de l'interface ===================== */
   const S = {
     tab: 'list', view: 'list', detailId: null,
-    create: Object.assign({ mode: 'auto', minutes: 40, kcal: 400, type: 'walk', variant: 'intervals', name: '', nameTouched: false,
+    create: Object.assign({ mode: 'auto', minutes: 40, kcal: 400, type: 'walk', variant: 'intervals', f63: true, name: '', nameTouched: false,
       mMinutes: 40, mStart: 'flat', mCopy: null, mName: '' }, ls.get(KEY + '.auto', {}), { nameTouched: false, name: '' }),
     edit: null, res: null
   };
   if (!['walk', 'run'].includes(S.create.type)) S.create.type = S.create.mode === 'run' ? 'run' : 'walk';
   if (!['auto', 'manual'].includes(S.create.mode)) S.create.mode = 'auto';
-  const saveCreatePrefs = () => { const c = S.create; ls.set(KEY + '.auto', { mode: c.mode, minutes: c.minutes, kcal: c.kcal, type: c.type, variant: c.variant, mMinutes: c.mMinutes, mStart: c.mStart }); };
+  const saveCreatePrefs = () => { const c = S.create; ls.set(KEY + '.auto', { mode: c.mode, minutes: c.minutes, kcal: c.kcal, type: c.type, variant: c.variant, f63: c.f63, mMinutes: c.mMinutes, mStart: c.mStart }); };
 
   /* ===================== Navigation ===================== */
   const TABS = [
@@ -569,11 +589,11 @@ select.txt{appearance:auto}
   }
   const avgLine = c => `<span class="m avg"><span class="vs">Vmoy. ${f1.format(c.avgV)} km/h</span> · <span class="ps">Pmoy. ${f1.format(c.avgP)} %</span></span>`;
   // Nom affiché : version courte pour un programme automatique dont le nom n'a pas été changé
-  const AUTO_NAME = /^(Marche|Course) (intervalles|pyramide|régulier) \d+ min · \d+ kcal$/i;
+  const AUTO_NAME = /^(Marche|Course) (intervalles|pyramide|régulier)( F63)? \d+ min · \d+ kcal$/i;
   function shortName(p){
     const m = AUTO_NAME.exec(p.name || '');
     if (!m) return p.name;
-    const f = m[2].charAt(0).toUpperCase() + m[2].slice(1).toLowerCase();
+    const f = m[2].charAt(0).toUpperCase() + m[2].slice(1).toLowerCase() + (m[3] ? ' F63' : '');
     return /^course$/i.test(m[1]) ? `Course · ${f}` : f;
   }
   function tileHtml(p){
@@ -636,7 +656,8 @@ select.txt{appearance:auto}
           <div class="field"><span class="lab">Durée</span>${stepHtml('cmin', c.minutes, 'min')}</div>
           <div class="field"><span class="lab">Objectif</span>${stepHtml('ckcal', c.kcal, 'kcal')}</div>
           <div class="field"><span class="lab">Type<small id="c-max"></small></span><div class="mini-seg">${segBtns('ctype', c.type, [['walk', 'Marche'], ['run', 'Course']])}</div></div>
-          <div class="field form-forme"><span class="lab">Forme</span><div class="mini-seg">${segBtns('cvar', c.variant, Object.entries(VARIANTS))}</div></div>
+          <div class="field form-forme"><span class="lab">Forme${c.f63 ? '<small>appliquée à la pente</small>' : ''}</span><div class="mini-seg">${segBtns('cvar', c.variant, Object.entries(VARIANTS))}</div></div>
+          <div class="field"><span class="lab">Spécial F63<small>Vitesse fixe, seule la pente varie (vitesse réduite au 1er et dernier palier)</small></span><button type="button" class="sw" role="switch" data-cf63 aria-checked="${c.f63}" aria-label="Spécial F63"></button></div>
         </div>
         <div class="card pv">
           <div id="pv-chart"></div>
@@ -669,7 +690,7 @@ select.txt{appearance:auto}
       </div>
       <div class="foot"><button type="button" class="btn pri" data-act="m-go">Composer les paliers</button></div>`;
   }
-  const autoName = () => `${modeCfg(S.create.type).label} ${VARIANTS[S.create.variant].toLowerCase()} ${S.create.minutes} min · ${S.create.kcal} kcal`;
+  const autoName = () => `${modeCfg(S.create.type).label} ${VARIANTS[S.create.variant].toLowerCase()}${S.create.f63 ? ' F63' : ''} ${S.create.minutes} min · ${S.create.kcal} kcal`;
   function refreshCreate(){
     const c = S.create;
     if (c.mode !== 'auto'){ const mm = $('st-mmin'); if (mm) mm.innerHTML = `${c.mMinutes}<small>min</small>`; return; }
@@ -678,7 +699,7 @@ select.txt{appearance:auto}
     $('c-max').textContent = `max ${f1.format(modeCfg(c.type).vmax)} km/h · Réglages`;
     if (!c.nameTouched){ c.name = autoName(); }
     const ni = $('c-name'); if (ni && document.activeElement !== ni) ni.value = c.name;
-    const res = S.res = generateAuto({ minutes: c.minutes, kcal: c.kcal, type: c.type, variant: c.variant });
+    const res = S.res = generateAuto({ minutes: c.minutes, kcal: c.kcal, type: c.type, variant: c.variant, f63: c.f63 });
     const cc = compute({ minutes: c.minutes, segs: res.segs });
     $('pv-chart').innerHTML = profileSvg(res.segs, { W: 340, H: 96, dots: true, lw: 2 });
     $('pv-k').textContent = f0.format(res.kcal);
@@ -815,7 +836,18 @@ select.txt{appearance:auto}
         <span class="small">Réglables aussi pendant la séance. Sur iPhone, désactivez le mode silencieux pour entendre les bips.</span>
       </div>`;
   }
-  const sndBtns = () => `<button type="button" data-snd="beep" aria-pressed="${settings.beep}">${ICON.bell}Bips</button><button type="button" data-snd="voice" aria-pressed="${settings.voice}">${ICON.voice}Voix</button>`;
+  const sndBtns = () => `<button type="button" data-snd="beep" aria-pressed="${settings.beep}">${ICON.bell}Bips</button><button type="button" data-snd="voice" aria-pressed="${settings.voice}">${ICON.voice}${voiceLabel()}</button>`;
+  const voiceLabel = () => !settings.voice ? 'Voix' : settings.voiceMode === 'auto' ? 'Voix auto' : 'Voix';
+  // Coupée → Auto → Toujours → Coupée
+  function cycleVoice(){
+    if (!settings.voice){ settings.voice = true; settings.voiceMode = 'auto'; }
+    else if (settings.voiceMode === 'auto') settings.voiceMode = 'all';
+    else settings.voice = false;
+    saveSettings();
+    if (settings.voice) say(settings.voiceMode === 'auto' ? 'Voix automatique : seulement aux changements de vitesse' : 'Voix activée', true);
+    else { try { speechSynthesis.cancel(); } catch(e){} }
+  }
+  const sndRefresh = root => root.querySelectorAll('[data-snd="voice"]').forEach(b => { b.setAttribute('aria-pressed', settings.voice); b.innerHTML = ICON.voice + voiceLabel(); });
 
   /* ===================== Vue : Réglages ===================== */
   function viewSettings(){
@@ -832,7 +864,7 @@ select.txt{appearance:auto}
         <span class="grp-t" style="margin-top:8px">Sons pendant la séance</span>
         <div class="card">
           ${sw('beep', 'Bips avant chaque palier')}
-          ${sw('voice', 'Voix (consignes annoncées)')}
+          <div class="field form-forme"><span class="lab">Voix<small>Auto : parle seulement quand la vitesse change</small></span><div class="mini-seg">${segBtns('vmode', !settings.voice ? 'off' : settings.voiceMode, [['off', 'Coupée'], ['auto', 'Auto'], ['all', 'Toujours']])}</div></div>
           <button type="button" class="field" data-act="snd-lib" style="width:100%;text-align:left"><span class="lab">Son des bips<small>15 sons au choix</small></span><span class="val" style="display:flex;align-items:center;gap:6px"><span id="snd-name">${esc(soundById(settings.sound).name)}</span><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l5 5-5 5"/></svg></span></button>
           <div class="field"><span class="lab">Tester bips et voix</span><button type="button" class="lnk" data-act="test-snd">Écouter</button></div>
         </div>
@@ -950,16 +982,18 @@ select.txt{appearance:auto}
 
   /* ===================== Actions (délégation) ===================== */
   document.addEventListener('click', e => {
-    const t = e.target.closest('[data-act],[data-open],[data-dur],[data-cmode],[data-ctype],[data-cvar],[data-mstart],[data-snd],[data-sw]');
+    const t = e.target.closest('[data-act],[data-open],[data-dur],[data-cf63],[data-vmode],[data-cmode],[data-ctype],[data-cvar],[data-mstart],[data-snd],[data-sw]');
     if (!t) return;
     if (t.closest('#run')){ if (t.dataset.act === 'bt-toggle') btConnect(); return; }
     if (t.dataset.open){ go('detail', { id: t.dataset.open }); return; }
     if (t.dataset.dur != null){ S.dur = +t.dataset.dur; const x = $('durChips') ? $('durChips').scrollLeft : 0; render(); if ($('durChips')) $('durChips').scrollLeft = x; return; }
     if (t.dataset.cmode){ S.create.mode = t.dataset.cmode; saveCreatePrefs(); render(); return; }
     if (t.dataset.ctype){ S.create.type = t.dataset.ctype; t.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); refreshCreate(); return; }
+    if (t.dataset.vmode){ const v = t.dataset.vmode; settings.voice = v !== 'off'; if (v !== 'off') settings.voiceMode = v; saveSettings(); t.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); if (settings.voice) say(v === 'auto' ? 'Voix automatique' : 'Voix activée', true); else { try { speechSynthesis.cancel(); } catch(err){} } return; }
+    if (t.hasAttribute('data-cf63')){ S.create.f63 = !S.create.f63; render(); return; }
     if (t.dataset.cvar){ S.create.variant = t.dataset.cvar; t.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); refreshCreate(); return; }
     if (t.dataset.mstart){ S.create.mStart = t.dataset.mstart; if (!S.create.mCopy && progs[0]) S.create.mCopy = progs[0].id; saveCreatePrefs(); render(); return; }
-    if (t.dataset.snd){ const k = t.dataset.snd; settings[k] = !settings[k]; saveSettings(); t.setAttribute('aria-pressed', settings[k]); if (k === 'beep' && settings.beep) beepCount(); if (k === 'voice' && settings.voice) say('Voix activée', true); return; }
+    if (t.dataset.snd){ const k = t.dataset.snd; if (k === 'voice'){ cycleVoice(); sndRefresh(document); return; } settings.beep = !settings.beep; saveSettings(); t.setAttribute('aria-pressed', settings.beep); if (settings.beep) beepCount(); return; }
     if (t.dataset.sw){ const k = t.dataset.sw; settings[k] = !settings[k]; saveSettings(); t.setAttribute('aria-checked', settings[k]); btRefreshUi(); return; }
     const a = t.dataset.act, p = byId(S.detailId);
     switch (a){
@@ -1228,7 +1262,7 @@ select.txt{appearance:auto}
     if (settings.beep){ [0, 1, 2].forEach(k => beepCount(k)); beepChange(3); }
     if (settings.voice){
       if (!settings.beep) ['trois', 'deux', 'un'].forEach((w, k) => setTimeout(() => say(w, true), k * 1000));
-      setTimeout(() => say('5,8 kilomètres heure, pente 4', true), settings.beep ? 3450 : 3000);
+      setTimeout(() => say(settings.voiceMode === 'auto' ? 'Vitesse 5,8 kilomètres heure' : '5,8 kilomètres heure, pente 4', true), settings.beep ? 3450 : 3000);
     }
   }
 
@@ -1466,9 +1500,24 @@ select.txt{appearance:auto}
   /* ===================== Séance plein écran ===================== */
   const run = $('run');
   let rs = null;
-  function cueCount(n){ if (settings.beep) beepCount(); else if (settings.voice) say(['un', 'deux', 'trois'][n - 1], true); }
-  function cueChange(s){ if (settings.beep) beepChange(); if (settings.voice) setTimeout(() => say(consigne(s), true), settings.beep ? 450 : 0); }
-  function cueStart(first){ const s = rs.p.segs[rs.seg]; if (settings.beep) beepCount(); if (settings.voice) setTimeout(() => say((first ? "C'est parti. " : 'Reprise. ') + consigne(s), true), settings.beep ? 250 : 0); }
+  const voiceAll = () => settings.voice && settings.voiceMode !== 'auto';
+  const speedChanges = i => { const a = rs.p.segs[i - 1], b = rs.p.segs[i]; return !!(a && b && Math.abs(a.v - b.v) >= .05); };
+  const sayKmh = v => `${f1.format(v)} kilomètres heure`;
+  function cueCount(n){
+    if (settings.beep) beepCount();
+    else if (settings.voice && (voiceAll() || speedChanges(rs.seg + 1))) say(['un', 'deux', 'trois'][n - 1], true);
+  }
+  function cueChange(s){
+    if (settings.beep) beepChange();
+    if (!settings.voice) return;
+    const txt = voiceAll() ? consigne(s) : speedChanges(rs.p.segs.indexOf(s)) ? `Vitesse ${sayKmh(s.v)}` : '';
+    if (txt) setTimeout(() => say(txt, true), settings.beep ? 450 : 0);
+  }
+  function cueStart(first){
+    const s = rs.p.segs[rs.seg];
+    if (settings.beep) beepCount();
+    if (settings.voice) setTimeout(() => say((first ? "C'est parti. " : 'Reprise. ') + (voiceAll() ? consigne(s) : sayKmh(s.v)), true), settings.beep ? 250 : 0);
+  }
   function cueEnd(){ if (settings.beep) beepChange(); if (settings.voice) setTimeout(() => say(`Séance terminée. ${f2.format(rs.c.dist)} kilomètres, ${f0.format(rs.c.kcal)} kilocalories. Bravo.`, true), settings.beep ? 500 : 0); }
 
   function startRun(p){
@@ -1501,7 +1550,7 @@ select.txt{appearance:auto}
     $('rPlay').onclick = togglePlay;
     $('rPrev').onclick = () => { rs.elapsed = Math.max(0, (Math.floor(rs.elapsed / rs.segSec) - 1) * rs.segSec); tick(true); };
     $('rNext').onclick = () => { rs.elapsed = Math.min(rs.total - .5, (Math.floor(rs.elapsed / rs.segSec) + 1) * rs.segSec); tick(true); };
-    $('rSnd').onclick = e => { const b = e.target.closest('[data-snd]'); if (!b) return; const k = b.dataset.snd; settings[k] = !settings[k]; saveSettings(); b.setAttribute('aria-pressed', settings[k]); if (k === 'voice') { if (settings.voice) say('Voix activée', true); else try { speechSynthesis.cancel(); } catch(err){} } else if (settings.beep) beepCount(); };
+    $('rSnd').onclick = e => { const b = e.target.closest('[data-snd]'); if (!b) return; if (b.dataset.snd === 'voice'){ cycleVoice(); sndRefresh(run); return; } settings.beep = !settings.beep; saveSettings(); b.setAttribute('aria-pressed', settings.beep); if (settings.beep) beepCount(); };
     rs.sentSeg = -1;
     tick(true); updateRunUi(); btLiveUi();
   }
