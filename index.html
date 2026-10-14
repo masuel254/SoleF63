@@ -308,7 +308,7 @@ select.txt{appearance:auto}
 <script>
 (() => {
   /* ===================== Constantes et outils ===================== */
-  const PAGE_BUILD = 'v9';   // change à chaque envoi : affiché à côté de la version
+  const PAGE_BUILD = 'v10';   // change à chaque envoi : affiché à côté de la version
   const N = 18, VMIN = 0.8, VMAX = 18, PMIN = 0, PMAX = 15;
   const KEY = 'solef63.programs.v1';
   const $ = id => document.getElementById(id);
@@ -557,8 +557,9 @@ select.txt{appearance:auto}
 
   /* ===================== Vue : Programmes ===================== */
   function viewList(){
-    // Du plus court au plus long, puis par nom à durée égale.
-    const list = progs.slice().sort((a, b) => a.minutes - b.minutes || a.name.localeCompare(b.name, 'fr'));
+    // Du plus court au plus long, puis à durée égale du moins au plus de kcal, puis par nom.
+    const kc = new Map(progs.map(p => [p.id, compute(p).kcal]));
+    const list = progs.slice().sort((a, b) => a.minutes - b.minutes || kc.get(a.id) - kc.get(b.id) || a.name.localeCompare(b.name, 'fr'));
     if (!list.length){
       return `<header class="hd"><h1>Programmes</h1><span class="sub">Aucun programme enregistré</span></header>
         <div class="scroll">
