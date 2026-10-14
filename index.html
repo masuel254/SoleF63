@@ -85,9 +85,33 @@ input,select,textarea{font:inherit;color:inherit;font-size:max(16px,1em)}
 .tile .k small{font-family:var(--f-body);font-size:12px;color:var(--muted);font-weight:600;margin-left:3px}
 .tile .km{font-size:12.5px;color:var(--muted);white-space:nowrap}
 .tile .t{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tile svg{width:100%;height:26px;display:block}
+.tile > svg{width:100%;height:26px;display:block}
 .tile .s{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tile .s .vs{color:var(--speed);font-weight:600} .tile .s .ps{color:var(--grade);font-weight:600}
+.stars{display:inline-flex;gap:1.5px;align-items:center;flex:none}
+.stars svg,.rater svg{fill:none;stroke:var(--muted);stroke-width:1.7;stroke-linejoin:round;opacity:.4}
+.stars svg.on,.rater svg.on{fill:#F5B301;stroke:#E0A100;opacity:1;filter:drop-shadow(0 1px 1.5px rgba(245,179,1,.35))}
+.tile .stars svg{width:14px;height:14px}
+.tile .rt{display:flex;align-items:center;gap:6px;min-height:16px}
+.tile .rt small{font-size:11.5px;color:var(--muted)}
+.rater{display:flex;justify-content:center;gap:4px}
+.rater button{padding:3px;border-radius:10px}
+.rater svg{width:42px;height:42px;stroke-width:1.4;transition:transform .15s}
+.rater button:active svg{transform:scale(.82)}
+.rater svg.pop{animation:pop .3s ease}
+@keyframes pop{50%{transform:scale(1.25)}}
+.rate-l{font-size:13.5px;color:var(--muted);min-height:18px}
+.hist{overflow:hidden}
+.hrow{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;padding:11px 14px;border-top:1px solid var(--line);text-align:left;width:100%;background:none}
+.hrow:first-child{border-top:0}
+.hrow:active{background:var(--surface-2)}
+.hrow .l1{font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hrow .l1 em{font-style:normal;color:var(--muted);font-weight:500}
+.hrow .l2{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hrow .stars{grid-column:2;grid-row:1 / span 2}
+.hrow .stars svg{width:14px;height:14px}
+.hsum{display:flex;justify-content:space-between;align-items:baseline;padding:0 4px}
+.hsum b{font-size:13px;color:var(--muted);font-weight:600}
 .chip small{opacity:.7;margin-left:2px;font-weight:600}
 .pcard{width:100%;text-align:left;padding:12px 14px;display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:2px 12px;align-items:center}
 .pcard:active{background:var(--surface-2)}
@@ -308,7 +332,7 @@ select.txt{appearance:auto}
 <script>
 (() => {
   /* ===================== Constantes et outils ===================== */
-  const PAGE_BUILD = 'v10';   // change à chaque envoi : affiché à côté de la version
+  const PAGE_BUILD = 'v11';   // change à chaque envoi : affiché à côté de la version
   const N = 18, VMIN = 0.8, VMAX = 18, PMIN = 0, PMAX = 15;
   const KEY = 'solef63.programs.v1';
   const $ = id => document.getElementById(id);
@@ -390,6 +414,23 @@ select.txt{appearance:auto}
   let lastId = ls.get(KEY + '.last', null);
   const byId = id => progs.find(p => p.id === id);
   const kindOf = p => p.origin === 'auto' ? 'auto' : 'user';
+
+  // Historique des séances menées jusqu'au bout (la plus récente en premier)
+  let hist = ls.get(KEY + '.hist', []); if (!Array.isArray(hist)) hist = [];
+  const saveHist = () => ls.set(KEY + '.hist', hist);
+  // Reprise unique : séance du 14/10/2026 (30 min intervalles, 297 kcal) faite de 7h30 à 8h00, notée 5 étoiles
+  if (!ls.get(KEY + '.seed-hist1', false)){
+    const cands = progs.filter(p => p.minutes === 30 && Math.round(compute(p).kcal) === 297);
+    const p = cands.find(x => /intervalles/i.test(x.name)) || cands[0];
+    if (p){
+      p.rating = 5; saveProgs();
+      const c = compute(p);
+      if (!hist.some(h => h.start === new Date(2026, 9, 14, 7, 30).getTime()))
+        hist.unshift({ id: uid(), pid: p.id, name: p.name, minutes: 30, kcal: Math.round(c.kcal), dist: +c.dist.toFixed(2), start: new Date(2026, 9, 14, 7, 30).getTime(), end: new Date(2026, 9, 14, 8, 0).getTime(), rating: 5 });
+      hist.sort((a, b) => b.start - a.start); saveHist();
+      ls.set(KEY + '.seed-hist1', true);
+    }
+  }
 
   /* ===================== Calculs (formules du fichier Excel TradeMil) ===================== */
   function compute(p, weight = settings.weight){
@@ -586,6 +627,8 @@ select.txt{appearance:auto}
       </div>
       <button type="button" class="fab" data-act="new">${ICON.plus}Nouveau programme</button>`;
   }
+  const STAR = '<path d="M12 2.8l2.85 5.8 6.4.93-4.63 4.5 1.1 6.37L12 17.4l-5.72 3l1.1-6.37-4.63-4.5 6.4-.93z"/>';
+  const starsHtml = n => `<span class="stars" aria-label="${n ? n + ' étoile' + (n > 1 ? 's' : '') + ' sur 5' : 'Pas encore notée'}">${[1, 2, 3, 4, 5].map(i => `<svg viewBox="0 0 24 24" class="${i <= n ? 'on' : ''}">${STAR}</svg>`).join('')}</span>`;
   const avgLine = c => `<span class="m avg"><span class="vs">Vmoy. ${f1.format(c.avgV)} km/h</span> · <span class="ps">Pmoy. ${f1.format(c.avgP)} %</span></span>`;
   // Nom affiché : version courte pour un programme automatique dont le nom n'a pas été changé
   const AUTO_NAME = /^(Marche|Course) (intervalles|pyramide|régulier)( F63)? \d+ min · \d+ kcal$/i;
@@ -601,6 +644,7 @@ select.txt{appearance:auto}
       <span class="top"><span class="d">${f0.format(p.minutes)} min</span>${kindOf(p) === 'auto' ? '<span class="a">AUTO</span>' : ''}</span>
       <span class="kr"><span class="k">${f0.format(c.kcal)}<small>kcal</small></span><span class="km">${f2.format(c.dist)} km</span></span>
       <span class="t">${esc(shortName(p))}</span>
+      <span class="rt">${starsHtml(p.rating || 0)}${p.rating ? '' : '<small>à noter</small>'}</span>
       ${profileSvg(p.segs, { W: 150, H: 26, pad: .7, lw: 1.6, r: 1 })}
       <span class="s"><span class="vs">${f1.format(c.avgV)} km/h</span> · <span class="ps">${f1.format(c.avgP)} %</span></span>
     </button>`;
@@ -837,7 +881,21 @@ select.txt{appearance:auto}
         <span class="grp-t" style="margin-top:6px">Sons pendant la séance</span>
         <div class="tg">${sndBtns()}</div>
         <span class="small">Réglables aussi pendant la séance. Sur iPhone, désactivez le mode silencieux pour entendre les bips.</span>
+        ${histHtml()}
       </div>`;
+  }
+  const DAYF = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+  const HMF = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  function histHtml(){
+    if (!hist.length) return `<span class="grp-t" style="margin-top:8px">Historique</span><div class="card empty" style="padding:14px;font-size:14px;color:var(--muted)">Les séances menées jusqu'au bout apparaîtront ici.</div>`;
+    const kc = hist.reduce((t, h) => t + (h.kcal || 0), 0), shown = hist.slice(0, S.histAll ? hist.length : 15);
+    return `<div class="hsum" style="margin-top:8px"><span class="grp-t" style="padding:0">Historique</span><b>${hist.length} séance${hist.length > 1 ? 's' : ''} · ${f0.format(kc)} kcal</b></div>
+      <div class="card hist">${shown.map(h => `<button type="button" class="hrow" data-hopen="${esc(h.pid || '')}">
+        <span class="l1">${esc(DAYF.format(h.start))} <em>${HMF.format(h.start)} – ${HMF.format(h.end)}</em></span>
+        ${starsHtml(h.rating || 0)}
+        <span class="l2">${h.minutes} min · ${f0.format(h.kcal || 0)} kcal · ${esc(shortName(h))}</span>
+      </button>`).join('')}</div>
+      ${hist.length > shown.length ? `<button type="button" class="btn sm" data-act="hist-all">Voir les ${hist.length} séances</button>` : ''}`;
   }
   const sndBtns = () => `<button type="button" data-snd="beep" aria-pressed="${settings.beep}">${ICON.bell}Bips</button><button type="button" data-snd="voice" aria-pressed="${settings.voice}">${ICON.voice}${voiceLabel()}</button>`;
   const voiceLabel = () => !settings.voice ? 'Voix' : settings.voiceMode === 'auto' ? 'Voix auto' : 'Voix';
@@ -1008,10 +1066,11 @@ select.txt{appearance:auto}
 
   /* ===================== Actions (délégation) ===================== */
   document.addEventListener('click', e => {
-    const t = e.target.closest('[data-act],[data-open],[data-dur],[data-cf63],[data-vmode],[data-cmode],[data-ctype],[data-cvar],[data-mstart],[data-snd],[data-sw]');
+    const t = e.target.closest('[data-act],[data-open],[data-hopen],[data-dur],[data-cf63],[data-vmode],[data-cmode],[data-ctype],[data-cvar],[data-mstart],[data-snd],[data-sw]');
     if (!t) return;
     if (t.closest('#run')){ if (t.dataset.act === 'bt-toggle') btConnect(); return; }
     if (t.dataset.open){ go('detail', { id: t.dataset.open }); return; }
+    if (t.dataset.hopen != null){ if (byId(t.dataset.hopen)) go('detail', { id: t.dataset.hopen }); else toast('Ce programme n’existe plus'); return; }
     if (t.dataset.dur != null){ S.dur = +t.dataset.dur; const x = $('durChips') ? $('durChips').scrollLeft : 0; render(); if ($('durChips')) $('durChips').scrollLeft = x; return; }
     if (t.dataset.cmode){ S.create.mode = t.dataset.cmode; saveCreatePrefs(); render(); return; }
     if (t.dataset.ctype){ S.create.type = t.dataset.ctype; t.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); refreshCreate(); return; }
@@ -1026,6 +1085,7 @@ select.txt{appearance:auto}
       case 'new': S.tab = 'create'; go('create'); break;
       case 'del-all': deleteAllSheet(); break;
       case 'upd-check': checkUpdate(); break;
+      case 'hist-all': S.histAll = true; render(); break;
       case 'back': go('list', { push: false }); break;
       case 'run': if (p) startRun(p); break;
       case 'edit': if (p) openEditor(p, { returnTo: 'detail' }); break;
@@ -1118,7 +1178,7 @@ select.txt{appearance:auto}
 
   /* ===================== Export / import ===================== */
   function exportProgs(){
-    const data = { app: 'sole-f63-programmes', version: 2, exported: new Date().toISOString(), settings, programs: progs };
+    const data = { app: 'sole-f63-programmes', version: 2, exported: new Date().toISOString(), settings, programs: progs, history: hist };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a'), d = new Date(), pad = n => String(n).padStart(2, '0');
     a.href = URL.createObjectURL(blob);
@@ -1136,14 +1196,25 @@ select.txt{appearance:auto}
       list = Array.isArray(raw) ? raw : raw.programs;
       if (!Array.isArray(list)) throw 0;
       list = list.filter(p => p && typeof p.name === 'string' && Array.isArray(p.segs) && p.segs.length === N).map(p => ({
-        id: uid(), origin: p.origin, name: p.name.slice(0, 60), minutes: clamp(Math.round(+p.minutes || 40), 5, 240), updated: Date.now(),
+        id: uid(), origin: p.origin, name: p.name.slice(0, 60), rating: (+p.rating >= 1 && +p.rating <= 5) ? Math.round(+p.rating) : undefined, minutes: clamp(Math.round(+p.minutes || 40), 5, 240), updated: Date.now(),
         segs: p.segs.map(s => ({ v: clamp(r1(+s.v || 4), VMIN, VMAX), p: clamp(r1(+s.p || 0), PMIN, PMAX) }))
       }));
       if (!list.length) throw 0;
     } catch(err){ toast('Fichier non reconnu : choisissez un export de cette appli'); return; }
-    let added = 0, replaced = 0;
+    let added = 0, replaced = 0, raw2;
     list.forEach(p => { const i = progs.findIndex(x => x.name === p.name); if (i >= 0){ progs[i] = Object.assign(p, { id: progs[i].id }); replaced++; } else { progs.push(p); added++; } });
-    saveProgs(); render();
+    saveProgs();
+    // Historique : ajouté sans doublon (même heure de début), relié aux programmes par leur nom
+    try { raw2 = JSON.parse(await file.text()); } catch(e){}
+    if (raw2 && Array.isArray(raw2.history)){
+      raw2.history.filter(h => h && +h.start && +h.end && typeof h.name === 'string').forEach(h => {
+        if (hist.some(x => x.start === +h.start)) return;
+        const p = progs.find(x => x.name === h.name);
+        hist.push({ id: uid(), pid: p ? p.id : null, name: h.name.slice(0, 60), minutes: +h.minutes || 0, kcal: +h.kcal || 0, dist: +h.dist || 0, start: +h.start, end: +h.end, rating: clamp(Math.round(+h.rating || 0), 0, 5) });
+      });
+      hist.sort((a, b) => b.start - a.start); saveHist();
+    }
+    render();
     toast(`${added} ajouté${added > 1 ? 's' : ''}, ${replaced} mis à jour`);
   }
 
@@ -1609,6 +1680,7 @@ select.txt{appearance:auto}
     rs.playing = !rs.playing;
     if (rs.playing){
       rs.last = performance.now(); cueStart(rs.elapsed === 0);
+      if (!rs.startedAt) rs.startedAt = Date.now();
       rs.timer = setInterval(() => tick(false), 250);
       if (btDriving()){ rs.sentSeg = rs.seg; btStart(rs.p.segs[rs.seg]); }
       try { rs.lock = await navigator.wakeLock?.request('screen'); } catch(e){}
@@ -1649,7 +1721,9 @@ select.txt{appearance:auto}
   function finishRun(){
     clearInterval(rs.timer); rs.playing = false; rs.done = true; cueEnd(); btStop();
     try { rs.lock?.release(); } catch(e){}
-    const p = rs.p, c = rs.c;
+    const p = rs.p, c = rs.c, prog = p.temp ? null : byId(p.id), prev = (prog || p).rating || 0, end = Date.now();
+    const h = { id: uid(), pid: prog ? prog.id : null, name: p.name, minutes: p.minutes, kcal: Math.round(c.kcal), dist: +c.dist.toFixed(2), start: rs.startedAt || end - rs.total * 1000, end, rating: prev };
+    hist.unshift(h); saveHist();
     run.querySelector('.rw').innerHTML = `<div class="run-top"><span class="nm">${esc(p.name)}</span></div>
       <div class="card done-card">
         <h2>Bravo !</h2>
@@ -1660,11 +1734,24 @@ select.txt{appearance:auto}
           <div class="kpi"><span>Dépense</span><b>${f0.format(c.kcal)}<small>kcal</small></b></div>
           <div class="kpi g"><span>Pente moy.</span><b>${f1.format(c.avgP)}<small>%</small></b></div>
         </div>
+        <span class="grp-t" style="text-align:center;padding:4px 0 0">Notez cette séance</span>
+        <div class="rater" id="rRate">${[1, 2, 3, 4, 5].map(i => `<button type="button" data-rate="${i}" aria-label="${i} étoile${i > 1 ? 's' : ''}"><svg viewBox="0 0 24 24" class="${i <= prev ? 'on' : ''}">${STAR}</svg></button>`).join('')}</div>
+        <span class="rate-l" id="rRateL">${prev ? `Dernière note : ${prev} étoile${prev > 1 ? 's' : ''} · touchez pour la modifier` : ''}</span>
         ${p.temp ? '<button type="button" class="btn pri" id="rKeep">Enregistrer ce programme</button>' : ''}
         <button type="button" class="btn" id="rClose">Fermer</button>
       </div>`;
     $('rClose').onclick = stopRun;
-    if (p.temp) $('rKeep').onclick = () => { const d = clone(p); delete d.temp; d.id = uid(); d.updated = Date.now(); progs.push(d); saveProgs(); lastId = d.id; ls.set(KEY + '.last', d.id); toast('Programme enregistré'); $('rKeep').remove(); };
+    let saved = prog;
+    $('rRate').onclick = e => {
+      const b = e.target.closest('[data-rate]'); if (!b) return;
+      const n = +b.dataset.rate;
+      h.rating = n; saveHist();
+      if (saved){ saved.rating = n; saveProgs(); } else p.rating = n;
+      $('rRate').querySelectorAll('svg').forEach((sv, i) => { sv.classList.toggle('on', i < n); sv.classList.remove('pop'); if (i === n - 1){ void sv.offsetWidth; sv.classList.add('pop'); } });
+      $('rRateL').textContent = `Note enregistrée : ${n} étoile${n > 1 ? 's' : ''}`;
+      try { navigator.vibrate && navigator.vibrate(10); } catch(err){}
+    };
+    if (p.temp) $('rKeep').onclick = () => { const d = clone(p); delete d.temp; d.id = uid(); d.updated = Date.now(); if (h.rating) d.rating = h.rating; progs.push(d); saveProgs(); saved = d; h.pid = d.id; saveHist(); lastId = d.id; ls.set(KEY + '.last', d.id); toast('Programme enregistré'); $('rKeep').remove(); };
   }
   function stopRun(){
     if (rs){ clearInterval(rs.timer); try { rs.lock?.release(); } catch(e){} if (!rs.done && rs.elapsed > 0) btStop(); }

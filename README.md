@@ -17,6 +17,11 @@ Modification d'un programme : écran dédié avec **Annuler / Enregistrer**, une
 
 Écran fixe : seule la zone centrale défile, champs en 16 px minimum (pas de zoom ni de décalage latéral sur iPhone). Installable sur téléphone et utilisable hors connexion.
 
+## Notes et historique
+
+- **Note** : à la fin d'une séance menée jusqu'au bout, l'écran de bilan propose 1 à 5 étoiles. Si le programme a déjà été noté, la dernière note est affichée et se modifie d'un appui. La note apparaît sur la tuile (étoiles grises « à noter » sinon).
+- **Historique** : onglet Séance, en bas. Chaque séance terminée y est ajoutée (date, heure de début et de fin, durée, kcal, programme, note), avec le total des séances et des kcal. Appui sur une ligne : la fiche du programme. L'historique est inclus dans l'export et repris à l'import, sans doublon.
+
 ## Pilotage du tapis (Bluetooth)
 
 Le Sole F63 accepte le protocole standard FTMS. Testé sur le tapis : il accepte la **pente** mais refuse la **vitesse** (réponse « contrôle refusé »). L'appli pilote donc la pente, et pour la vitesse affiche l'écart en direct sous la consigne (« ▲ Accélérez : 1,0 → 4,2 », puis ✓ en vert) en lisant la vitesse réelle du tapis. Ce refus est mémorisé ; Réglages, « Retester la vitesse » pour réessayer.
