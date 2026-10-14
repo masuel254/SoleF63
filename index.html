@@ -332,7 +332,7 @@ select.txt{appearance:auto}
 <script>
 (() => {
   /* ===================== Constantes et outils ===================== */
-  const PAGE_BUILD = 'v11';   // change à chaque envoi : affiché à côté de la version
+  const PAGE_BUILD = 'v12';   // change à chaque envoi : affiché à côté de la version
   const N = 18, VMIN = 0.8, VMAX = 18, PMIN = 0, PMAX = 15;
   const KEY = 'solef63.programs.v1';
   const $ = id => document.getElementById(id);
@@ -621,7 +621,7 @@ select.txt{appearance:auto}
       <div class="scroll">
         <div class="chips" id="durChips">${chip(0, `Toutes <small>${list.length}</small>`)}${durs.map(d => chip(d, `${d} min${list.filter(p => p.minutes === d).length > 1 ? ` <small>${list.filter(p => p.minutes === d).length}</small>` : ''}`)).join('')}</div>
         <div class="tiles">${shown.map(tileHtml).join('')}</div>
-        <span class="small center">Appui long sur une tuile pour la supprimer, la dupliquer ou la lancer.</span>
+        <span class="small center">Appui long sur une tuile pour la lancer, la renommer, la dupliquer ou la supprimer.</span>
         <button type="button" class="btn danger" data-act="del-all" style="margin-top:14px">${S.dur ? `Effacer les ${shown.length > 1 ? shown.length + ' programmes' : 'programme'} de ${S.dur} min` : `Tout effacer (${list.length})`}</button>
         <div style="height:66px"></div>
       </div>
@@ -1010,12 +1010,14 @@ select.txt{appearance:auto}
     openSheet(`<h3>${esc(shortName(p))} · ${p.minutes} min</h3><p>${f0.format(c.kcal)} kcal · ${f2.format(c.dist)} km · ${f1.format(c.avgV)} km/h · ${f1.format(c.avgP)} %</p>
       <button type="button" class="btn pri" data-act="tm-run">${ICON.play}Lancer la séance</button>
       <button type="button" class="btn" data-act="tm-open">Ouvrir la fiche</button>
+      <button type="button" class="btn" data-act="tm-ren">Renommer</button>
       <button type="button" class="btn" data-act="tm-dup">Dupliquer</button>
       <button type="button" class="btn danger" data-act="tm-del">Supprimer</button>
       <button type="button" class="btn" data-act="sh-close">Annuler</button>`, m => {
       m.querySelector('[data-act="tm-run"]').onclick = () => { closeSheet(); startRun(p); };
       m.querySelector('[data-act="tm-open"]').onclick = () => { closeSheet(); go('detail', { id: p.id }); };
       m.querySelector('[data-act="tm-dup"]').onclick = () => { closeSheet(); const d = Object.assign(clone(p), { id: uid(), name: p.name + ' (copie)', updated: Date.now() }); delete d.sid; progs.push(d); saveProgs(); render(); toast('Programme dupliqué'); };
+      m.querySelector('[data-act="tm-ren"]').onclick = () => { closeSheet(); renameSheet(p); };
       m.querySelector('[data-act="tm-del"]').onclick = () => { closeSheet(); deleteWithUndo(p.id); };
     });
   }
@@ -1049,7 +1051,7 @@ select.txt{appearance:auto}
     openSheet(`<h3>Renommer</h3><input class="txt" id="rn" type="text" maxlength="60" value="${esc(p.name)}" autocomplete="off">
       <button type="button" class="btn pri" data-act="rn-ok">Enregistrer</button><button type="button" class="btn" data-act="sh-close">Annuler</button>`, m => {
       const i = m.querySelector('#rn'); i.focus(); i.select();
-      const ok = () => { p.name = i.value.trim() || p.name; p.updated = Date.now(); saveProgs(); closeSheet(); render(); toast('Programme renommé'); };
+      const ok = () => { p.name = i.value.trim() || p.name; p.updated = Date.now(); saveProgs(); if (hist.some(h => h.pid === p.id)){ hist.forEach(h => { if (h.pid === p.id) h.name = p.name; }); saveHist(); } closeSheet(); render(); toast('Programme renommé'); };
       m.querySelector('[data-act="rn-ok"]').onclick = ok;
       i.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
     });
