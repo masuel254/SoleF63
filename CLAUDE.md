@@ -91,5 +91,7 @@ Tests : serveur local `python3 -m http.server 8766`, Playwright (Chromium, viewp
 
 ## 8. Sujets ouverts
 
+Historique détaillé des échanges et décisions : voir `CONVERSATIONS.md`.
+
 - **Strava** : envoi direct prévu via un webhook n8n sur le VPS de Samuel (bouton en fin de séance, à sa main, pentes dans la description). **Bloqué** : depuis le 01/06/2026, Strava exige un abonnement payant pour créer une application API ; Samuel a un compte gratuit. Option 1 (saisie manuelle) et option 2 (fichier .tcx importé sur le site) écartées par lui. Ne pas coder sans son feu vert.
 - **Kinomap** (Samuel est abonné ; Kinomap synchronise déjà vers Strava ; il n'utilise pas les deux applis en même temps) : pas d'import de programmes ni d'API publique. Piste : créateur d'entraînements structurés sur creator.kinomap.com/workout (une valeur par palier, mode pente, entraînements publics) pour y recopier les programmes Spécial F63. En attente : Samuel doit vérifier si « Entraînement structuré » existe pour le tapis dans Kinomap. Idée si oui : bloc « Pour Kinomap » dans la fiche (vitesse à régler + 18 lignes durée/pente).
