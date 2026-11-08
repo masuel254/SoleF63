@@ -300,8 +300,27 @@ select.txt{appearance:auto}
 .tgt em{font-style:normal;font-size:14px;color:var(--muted)}
 .tgt em strong{color:var(--ink)}
 .rstrip{width:100%;height:56px;display:block;flex:none}
-.rstats{display:flex;justify-content:space-around;color:var(--muted);font-size:14px;flex-wrap:wrap;gap:6px}
-.rstats b{color:var(--ink);font-family:var(--f-display);font-size:23px;margin-right:3px}
+.rlab{display:block;font-style:normal;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.rtime .tl{display:flex;justify-content:space-between;align-items:flex-end}
+.rtime .tl > span{display:flex;flex-direction:column} .rtime .tl .r{text-align:right}
+.rtime .tl b{font-family:var(--f-display);font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+.scrub{position:relative;height:10px;border-radius:5px;background:var(--surface-2);margin:8px 9px 0;flex:none}
+.scrub i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--ink);border-radius:5px}
+.scrub em{position:absolute;left:0;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:var(--surface);border:3px solid var(--ink)}
+.rdist{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px}
+.rdist .dh{display:flex;justify-content:space-between;align-items:flex-end;gap:8px}
+.rdist .dh .r{text-align:right}
+.rdist .dh b{font-family:var(--f-display);font-size:42px;line-height:1;color:var(--speed);font-variant-numeric:tabular-nums}
+.rdist .dh .r b{font-size:30px;color:var(--ink)}
+.rdist .dh small{font-size:15px;color:var(--muted);margin-left:4px}
+.track{position:relative;height:34px;margin:12px 16px 2px 14px}
+.track .ln,.track .dn{position:absolute;left:0;top:11px;height:8px;border-radius:4px}
+.track .ln{right:0;background:var(--speed-soft)} .track .dn{width:0;background:var(--speed)}
+.track .tk{position:absolute;top:24px;font-size:11px;line-height:1;color:var(--muted);transform:translateX(-50%)}
+.track .tk:before{content:"";position:absolute;left:50%;top:-9px;width:1px;height:5px;background:var(--muted);opacity:.5}
+.track .me{position:absolute;left:0;top:1px;width:28px;height:28px;margin-left:-14px;border-radius:50%;background:var(--surface);border:2px solid var(--speed);display:grid;place-items:center;font-size:15px;line-height:1}
+.track .fl{position:absolute;right:-18px;top:-3px;font-size:18px;line-height:1}
+.rdist .left{font-size:14px;color:var(--muted)} .rdist .left b{color:var(--ink)}
 .rctl{display:grid;grid-template-columns:64px 1fr 64px;gap:12px;align-items:center;margin-top:auto}
 .rctl .c{height:64px;width:64px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center}
 .rctl .c svg{width:24px;height:24px}
@@ -334,7 +353,7 @@ select.txt{appearance:auto}
 <script>
 (() => {
   /* ===================== Constantes et outils ===================== */
-  const PAGE_BUILD = 'v14';   // change à chaque envoi : affiché à côté de la version
+  const PAGE_BUILD = 'v15';   // change à chaque envoi : affiché à côté de la version
   const N = 18, VMIN = 0.8, VMAX = 18, PMIN = 0, PMAX = 15;
   const KEY = 'solef63.programs.v1';
   const $ = id => document.getElementById(id);
@@ -1660,6 +1679,13 @@ select.txt{appearance:auto}
   }
   function cueEnd(){ if (settings.beep) beepChange(); if (settings.voice) setTimeout(() => say(`Séance terminée. ${f2.format(rs.c.dist)} kilomètres, ${f0.format(rs.c.kcal)} kilocalories. Bravo.`, true), settings.beep ? 500 : 0); }
 
+  // Graduations de la piste : pas adapté à la distance totale
+  function trackTicks(total){
+    const step = total <= 1.5 ? .25 : total <= 4 ? .5 : total <= 8 ? 1 : 2;
+    let h = '';
+    for (let k = 0; k <= total - step * .35; k += step) h += `<span class="tk" style="left:${(k / total * 100).toFixed(2)}%">${String(+k.toFixed(2)).replace('.', ',')}</span>`;
+    return h;
+  }
   function startRun(p){
     if (!p.temp){ lastId = p.id; ls.set(KEY + '.last', p.id); }
     const c = compute(p);
@@ -1671,13 +1697,18 @@ select.txt{appearance:auto}
       </div>
       <div class="btbar" id="rBt" hidden></div>
       <div><div class="clock" id="rClock">0:00</div><div class="clock-s" id="rSub"></div></div>
-      <div class="pbar"><i id="rBar"></i></div>
+      <div class="rtime"><div class="tl"><span><i class="rlab">Écoulé</i><b id="rEl">0:00</b></span><span class="r"><i class="rlab">Restant</i><b id="rLeft"></b></span></div>
+        <div class="scrub"><i id="rBar"></i><em id="rKnob"></em></div></div>
       <div class="big2">
         <div class="tgt v"><span>Vitesse km/h</span><b id="rV"></b><em id="rVn"></em><span class="vguide" id="rVg" hidden></span></div>
         <div class="tgt p"><span>Pente %</span><b id="rP"></b><em id="rPn"></em></div>
       </div>
+      <div class="rdist">
+        <div class="dh"><span><i class="rlab">Distance</i><b id="rD">0,00</b><small>/ ${f2.format(c.dist)} km</small></span><span class="r"><i class="rlab">Kcal</i><b id="rK">0</b><small>/ ${f0.format(c.kcal)}</small></span></div>
+        <div class="track"><div class="ln"></div><div class="dn" id="rTrk"></div>${trackTicks(c.dist)}<span class="me" id="rMe">${c.avgV >= 7 ? '🏃' : '🚶'}</span><span class="fl">🏁</span></div>
+        <div class="left" id="rDl"></div>
+      </div>
       <div id="rStrip"></div>
-      <div class="rstats"><span><b id="rD">0,00</b>km</span><span><b id="rK">0</b>kcal</span><span><b id="rLeft"></b>restant</span></div>
       <div class="small center" id="rHint">Mettez en pause pour quitter.</div>
       <div class="rctl">
         <button type="button" class="c" id="rPrev" aria-label="Palier précédent">${ICON.prev}</button>
@@ -1777,14 +1808,18 @@ select.txt{appearance:auto}
     const counting = rs.playing && secLeft >= 1 && secLeft <= 3 && rs.elapsed < rs.total;
     if (counting && !manual){ const key = i + ':' + secLeft; if (rs.lastCd !== key){ rs.lastCd = key; cueCount(secLeft); } }
     const ck = $('rClock'); ck.classList.toggle('cd', counting); ck.textContent = mmss(secLeft / 60);
-    $('rSub').textContent = `avant ${nx ? 'le prochain palier' : 'la fin'} · ${mmss(rs.elapsed / 60)} sur ${mmss(rs.total / 60)}`;
-    $('rBar').style.width = (rs.elapsed / rs.total * 100) + '%';
+    $('rSub').textContent = nx ? `avant le palier ${i + 2} sur ${N}` : 'avant la fin';
+    const tp = (rs.elapsed / rs.total * 100) + '%';
+    $('rBar').style.width = tp; $('rKnob').style.left = tp; $('rEl').textContent = mmss(rs.elapsed / 60);
     $('rV').textContent = f1.format(s.v); $('rP').textContent = fp(s.p);
     $('rVn').innerHTML = nx ? `Ensuite <strong>${f1.format(nx.v)}</strong>` : 'Dernier palier';
     $('rPn').innerHTML = nx ? `Ensuite <strong>${fp(nx.p)} %</strong>` : 'Dernier palier';
     if (rs.stripSeg !== i){ rs.stripSeg = i; $('rStrip').innerHTML = profileSvg(p.segs, { W: 340, H: 56, noLine: true, done: i, pad: 1.5, cls: 'rstrip' }); }
     const r = rs.c.rows[i], frac = inSeg / rs.segSec;
-    $('rD').textContent = f2.format((i ? rs.c.rows[i - 1].distCum : 0) + r.dist * frac);
+    const dDone = (i ? rs.c.rows[i - 1].distCum : 0) + r.dist * frac, dp = Math.min(100, dDone / rs.c.dist * 100) + '%';
+    $('rD').textContent = f2.format(dDone);
+    $('rTrk').style.width = dp; $('rMe').style.left = dp;
+    $('rDl').innerHTML = `Encore <b>${f2.format(Math.max(0, rs.c.dist - dDone))} km</b>`;
     $('rK').textContent = f0.format((i ? rs.c.rows[i - 1].kcalCum : 0) + r.kcal * frac);
     $('rLeft').textContent = mmss((rs.total - rs.elapsed) / 60);
     if (rs.elapsed >= rs.total && rs.playing){ finishRun(); }
