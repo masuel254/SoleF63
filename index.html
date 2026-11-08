@@ -94,6 +94,8 @@ input,select,textarea{font:inherit;color:inherit;font-size:max(16px,1em)}
 .tile .stars svg{width:14px;height:14px}
 .tile .rt{display:flex;align-items:center;gap:6px;min-height:16px}
 .tile .rt small{font-size:11.5px;color:var(--muted)}
+.btlog{margin:0;padding:8px 14px 12px;max-height:180px;overflow:auto;font:11.5px/1.45 ui-monospace,Menlo,monospace;color:var(--muted);white-space:pre-wrap;-webkit-user-select:text;user-select:text;border-top:1px solid var(--line)}
+.btlog:empty{display:none}
 .rater{display:flex;justify-content:center;gap:4px}
 .rater button{padding:3px;border-radius:10px}
 .rater svg{width:42px;height:42px;stroke-width:1.4;transition:transform .15s}
@@ -332,7 +334,7 @@ select.txt{appearance:auto}
 <script>
 (() => {
   /* ===================== Constantes et outils ===================== */
-  const PAGE_BUILD = 'v12';   // change à chaque envoi : affiché à côté de la version
+  const PAGE_BUILD = 'v13';   // change à chaque envoi : affiché à côté de la version
   const N = 18, VMIN = 0.8, VMAX = 18, PMIN = 0, PMAX = 15;
   const KEY = 'solef63.programs.v1';
   const $ = id => document.getElementById(id);
@@ -940,6 +942,8 @@ select.txt{appearance:auto}
           <div class="field"><span class="lab">Bluetooth<small data-bt-status class="bt-st">${btStatusText()}</small></span><button type="button" class="lnk" data-act="bt-toggle">${bt.connected ? 'Déconnecter' : 'Connecter'}</button></div>
           <div class="field"><span class="lab">Piloter vitesse et pente<small id="bt-cap"></small>${settings.speedManualFor ? '<button type="button" class="lnk" data-act="bt-retest" style="font-size:13px;text-align:left">Retester la vitesse au prochain démarrage</button>' : ''}</span><button type="button" class="sw" role="switch" data-sw="drive" aria-checked="${settings.drive}" aria-label="Piloter vitesse et pente"></button></div>
           <div class="field"><span class="lab">Limites</span><span class="val">0,8 à 18 km/h · 0 à 15 %</span></div>
+          <div class="field"><span class="lab">Journal Bluetooth<small id="btLogN">${bt.log.length} lignes</small></span><span><button type="button" class="lnk" data-act="bt-log-copy">Copier</button> · <button type="button" class="lnk" data-act="bt-log-clear">Effacer</button></span></div>
+          <pre id="btLog" class="btlog">${esc(bt.log.join('\n'))}</pre>
         </div>
         <span class="small" style="padding:0 4px">${btAvailable() ? 'Une seule appli à la fois peut être connectée au tapis : fermez Kinomap et Sole+ avant de connecter.' : 'Sur iPhone, le Bluetooth n’est accessible que depuis le navigateur Bluefy. <button type="button" class="lnk" data-act="bt-help">Comment faire</button>'}</span>
         <span class="grp-t" style="margin-top:8px">Application</span>
@@ -1124,6 +1128,8 @@ select.txt{appearance:auto}
       case 'snd-lib': soundSheet(); break;
       case 'bt-toggle': bt.connected ? btDisconnect() : btConnect(); break;
       case 'bt-help': btHelpSheet(); break;
+      case 'bt-log-copy': { const t = bt.log.join('\n') || '(vide)'; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast('Journal copié'), () => toast('Copie impossible : sélectionnez le texte du journal')); break; }
+      case 'bt-log-clear': bt.log = []; btLog('journal effacé'); break;
       case 'bt-retest': settings.speedManualFor = ''; saveSettings(); bt.speedManual = false; render(); toast('La vitesse sera de nouveau envoyée au tapis'); break;
       case 'export': exportProgs(); break;
       case 'import': $('fileImport').click(); break;
@@ -1376,7 +1382,15 @@ select.txt{appearance:auto}
   const FTMS = uuid(0x1826), C_FEAT = uuid(0x2acc), C_TREAD = uuid(0x2acd), C_SPD = uuid(0x2ad4), C_INC = uuid(0x2ad5), C_CP = uuid(0x2ad9), C_STATUS = uuid(0x2ada);
   const bt = { dev: null, cp: null, connected: false, connecting: false, lost: false, canSpeed: true, canIncl: true,
     hasControl: false, live: { v: null, p: null }, range: { vmin: VMIN, vmax: VMAX, pmin: PMIN, pmax: PMAX },
-    queue: Promise.resolve(), pending: null, err: '', errSpd: '', errInc: '', name: '', lastErr: '', stage: '', target: null, rt: { v: { n: 0, t: null }, p: { n: 0, t: null } }, speedManual: false };
+    queue: Promise.resolve(), pending: null, err: '', errSpd: '', errInc: '', name: '', lastErr: '', stage: '', target: null, rt: { v: { n: 0, t: null }, p: { n: 0, t: null } }, speedManual: false, log: [] };
+  // Journal Bluetooth (Réglages) : commandes envoyées, réponses et états du tapis, pour diagnostiquer
+  const hex = b => Array.from(b, x => x.toString(16).padStart(2, '0')).join(' ');
+  const CP_NAME = { 0x00: 'contrôle', 0x02: 'vitesse', 0x03: 'pente', 0x07: 'démarrer/reprendre', 0x08: 'stop/pause' };
+  function btLog(t){
+    const d = new Date(), hh = [d.getHours(), d.getMinutes(), d.getSeconds()].map(x => String(x).padStart(2, '0')).join(':');
+    bt.log.push(hh + '  ' + t); if (bt.log.length > 200) bt.log.splice(0, bt.log.length - 200);
+    const el = $('btLog'); if (el){ el.textContent = bt.log.join('\n'); const c = $('btLogN'); if (c) c.textContent = bt.log.length + ' lignes'; }
+  }
   const btAvailable = () => !!(navigator.bluetooth && navigator.bluetooth.requestDevice);
   const btDriving = () => bt.connected && settings.drive && !(rs && rs.noDrive) && (bt.canSpeed || bt.canIncl);
   const u16 = x => [x & 255, (x >> 8) & 255];
@@ -1448,6 +1462,7 @@ select.txt{appearance:auto}
     await cp.startNotifications();
     bt.stage = 'prêt';
     bt.cp = cp; bt.connected = true; bt.lost = false; bt.hasControl = false; bt.err = ''; bt.speedManual = settings.speedManualFor === bt.name;
+    btLog(`connecté à ${bt.name} (vitesse ${bt.canSpeed ? 'oui' : 'non'}, pente ${bt.canIncl ? 'oui' : 'non'}, page ${PAGE_BUILD})`);
   }
   function btDisconnect(){
     const d = bt.dev; bt.dev = null;
@@ -1458,7 +1473,7 @@ select.txt{appearance:auto}
   function btReset(){ bt.connected = false; bt.cp = null; bt.hasControl = false; bt.live = { v: null, p: null }; if (bt.pending){ bt.pending.cb(-1); } }
   async function onBtLost(){
     if (!bt.dev) return;   // déconnexion volontaire
-    btReset(); bt.lost = true; btRefreshUi();
+    btReset(); bt.lost = true; btLog('connexion perdue'); btRefreshUi();
     if (rs && !rs.done) toast('Connexion au tapis perdue : il garde sa vitesse et sa pente');
     for (let k = 0; k < 3 && bt.dev && !bt.connected; k++){   // tentative de reconnexion automatique
       await new Promise(r => setTimeout(r, 1500 * (k + 1)));
@@ -1471,7 +1486,7 @@ select.txt{appearance:auto}
     bt.queue = bt.queue.then(() => new Promise(res => {
       if (!bt.cp) return res(-1);
       let done = false;
-      const fin = code => { if (done) return; done = true; clearTimeout(to); bt.pending = null; res(code); };
+      const fin = code => { if (done) return; done = true; clearTimeout(to); bt.pending = null; btLog(`→ ${CP_NAME[bytes[0]] || 'op'} [${hex(bytes)}] : ${code === 1 ? 'OK' : code === 0 ? 'pas de réponse' : code === -1 ? 'échec envoi' : (CP_ERR[code] || 'code ' + code)}`); res(code); };
       const to = setTimeout(() => fin(0), 3000);
       bt.pending = { op: bytes[0], cb: fin };
       const data = new Uint8Array(bytes);
@@ -1486,7 +1501,7 @@ select.txt{appearance:auto}
   function onTread(e){
     const dv = e.target.value; if (dv.byteLength < 2) return;
     const fl = dv.getUint16(0, true); let o = 2;
-    if (!(fl & 1) && dv.byteLength >= o + 2){ bt.live.v = dv.getUint16(o, true) / 100; o += 2; }
+    if (!(fl & 1) && dv.byteLength >= o + 2){ const v = dv.getUint16(o, true) / 100, was = bt.live.v; bt.live.v = v; o += 2; if (was != null && (was >= .3) !== (v >= .3)) btLog(v >= .3 ? `bande en marche (${f1.format(v)} km/h)` : 'bande arrêtée'); }
     if (fl & 2) o += 2;
     if (fl & 4) o += 3;
     if ((fl & 8) && dv.byteLength >= o + 2) bt.live.p = dv.getInt16(o, true) / 10;
@@ -1495,7 +1510,10 @@ select.txt{appearance:auto}
   function onStatus(e){
     const dv = e.target.value; if (!dv.byteLength) return;
     const op = dv.getUint8(0);
-    if (op === 0x02 || op === 0x03){   // arrêté ou mis en pause sur la console, ou clé de sécurité retirée
+    btLog(`← état tapis [${hex(new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength))}]`);
+    if (op === 0x04){   // relancé sur la console : la séance reprend
+      if (rs && !rs.playing && !rs.done && rs.confirmed){ togglePlay({ machine: true }); toast('Tapis relancé : séance reprise'); }
+    } else if (op === 0x02 || op === 0x03){   // arrêté ou mis en pause sur la console, ou clé de sécurité retirée
       if (rs && rs.playing && !rs.done){ togglePlay({ machine: true }); toast(op === 0x03 ? 'Clé de sécurité retirée : séance en pause' : 'Tapis arrêté sur la console : séance en pause'); }
     } else if (op === 0xFF){ bt.hasControl = false; }
   }
@@ -1543,7 +1561,26 @@ select.txt{appearance:auto}
     btLiveUi();
   }
   const speedPiloted = () => bt.connected && bt.canSpeed && !bt.speedManual;
-  async function btStart(s){ if (!btDriving() || !(await btControl())) return; await btSend([0x07]); await btTargets(s); }
+  async function btStart(s){
+    if (!btDriving() || !(await btControl())) return;
+    let r = await btSend([0x07]);
+    if (r !== 1){ bt.hasControl = false; if (await btControl()) r = await btSend([0x07]); }
+    await btTargets(s);
+  }
+  // Reprise après pause : si la bande ne repart pas, on insiste par étapes
+  // 4 s : nouvelle demande de contrôle + reprendre ; 8 s : arrêt complet puis démarrer ; 12 s : message console
+  function beltWatch(){
+    clearTimeout(rs.beltT);
+    const step = async () => {
+      if (!rs || !rs.playing || !rs.waitBelt || !btDriving()) return;
+      const t = Date.now() - rs.waitBelt, s = rs.p.segs[rs.seg];
+      if (rs.beltStep === 0 && t >= 4000){ rs.beltStep = 1; btLog('la bande ne repart pas : nouvel essai'); bt.hasControl = false; if (await btControl()) await btSend([0x07]); }
+      else if (rs.beltStep === 1 && t >= 8000){ rs.beltStep = 2; btLog('toujours arrêtée : arrêt complet puis démarrage'); await btSend([0x08, 0x01]); await new Promise(r => setTimeout(r, 800)); bt.hasControl = false; if (await btControl()){ await btSend([0x07]); await btTargets(s); } }
+      else if (rs.beltStep === 2 && t >= 12000){ rs.beltStep = 3; btLog('le tapis refuse de redémarrer à distance'); toast('Le tapis ne redémarre pas à distance : appuyez sur Start sur la console'); }
+      if (rs.beltStep < 3) rs.beltT = setTimeout(step, 500);
+    };
+    rs.beltT = setTimeout(step, 500);
+  }
   async function btPause(){ clearTimeout(bt.rt.v.t); clearTimeout(bt.rt.p.t); if (btDriving()) await btSend([0x08, 0x02]); }
   async function btStop(){ clearTimeout(bt.rt.v.t); clearTimeout(bt.rt.p.t); bt.target = null; if (btDriving()) await btSend([0x08, 0x01]); }
 
@@ -1684,16 +1721,25 @@ select.txt{appearance:auto}
       rs.last = performance.now(); cueStart(rs.elapsed === 0);
       if (!rs.startedAt) rs.startedAt = Date.now();
       rs.timer = setInterval(() => tick(false), 250);
-      if (btDriving()){ rs.sentSeg = rs.seg; btStart(rs.p.segs[rs.seg]); }
+      if (btDriving()){
+        rs.sentSeg = rs.seg;
+        if (opts.machine) btTargets(rs.p.segs[rs.seg]); else btStart(rs.p.segs[rs.seg]);
+        // Le chrono attend que la bande tourne (si le tapis transmet sa vitesse)
+        if (bt.live.v != null && bt.live.v < .3){ rs.waitBelt = Date.now(); rs.beltStep = opts.machine ? 3 : (rs.elapsed > 0 ? 0 : 1); beltWatch(); }
+      }
       try { rs.lock = await navigator.wakeLock?.request('screen'); } catch(e){}
     } else {
-      clearInterval(rs.timer); try { rs.lock?.release(); } catch(e){}
+      clearInterval(rs.timer); clearTimeout(rs.beltT); rs.waitBelt = 0; try { rs.lock?.release(); } catch(e){}
       if (!opts.machine) btPause();
     }
     updateRunUi();
   }
   function tick(manual){
     if (!rs || rs.done) return;
+    if (rs.playing && rs.waitBelt){
+      if (bt.live.v != null && bt.live.v >= .3){ rs.waitBelt = 0; clearTimeout(rs.beltT); updateRunUi(); }
+      else { rs.last = performance.now(); if (!btDriving()) rs.waitBelt = 0; else $('rHint').textContent = rs.beltStep >= 3 ? 'Le tapis ne repart pas : appuyez sur Start sur la console.' : 'Démarrage du tapis…'; }
+    }
     if (rs.playing && !manual){ const n = performance.now(); rs.elapsed += (n - rs.last) / 1000; rs.last = n; }
     if (rs.playing && manual) rs.last = performance.now();
     rs.elapsed = Math.min(rs.elapsed, rs.total);
@@ -1721,7 +1767,7 @@ select.txt{appearance:auto}
     if (rs.elapsed >= rs.total && rs.playing){ finishRun(); }
   }
   function finishRun(){
-    clearInterval(rs.timer); rs.playing = false; rs.done = true; cueEnd(); btStop();
+    clearInterval(rs.timer); clearTimeout(rs.beltT); rs.playing = false; rs.done = true; cueEnd(); btStop();
     try { rs.lock?.release(); } catch(e){}
     const p = rs.p, c = rs.c, prog = p.temp ? null : byId(p.id), prev = (prog || p).rating || 0, end = Date.now();
     const h = { id: uid(), pid: prog ? prog.id : null, name: p.name, minutes: p.minutes, kcal: Math.round(c.kcal), dist: +c.dist.toFixed(2), start: rs.startedAt || end - rs.total * 1000, end, rating: prev };

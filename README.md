@@ -31,6 +31,8 @@ Le Sole F63 accepte le protocole standard FTMS. Testé sur le tapis : il accepte
 - **Séance** : au premier démarrage, confirmation de sécurité, puis le tapis démarre et reçoit vitesse et pente à chaque palier (et avec les boutons palier précédent / suivant). Pause et Reprendre mettent le tapis en pause et le relancent ; à la fin, le tapis s'arrête.
 - **Sécurité** : un arrêt sur la console ou le retrait de la clé de sécurité met la séance en pause. Si la connexion est perdue, le tapis garde sa vitesse et sa pente ; l'appli tente de se reconnecter et l'affiche en orange.
 - La vitesse et la pente réelles du tapis s'affichent en haut de l'écran de séance.
+- **Reprise après pause** : le chrono ne repart que quand la bande tourne (« Démarrage du tapis… »). Si la bande ne repart pas, l'appli insiste : nouvelle demande au bout de 4 s, puis arrêt complet et redémarrage au bout de 8 s, puis message « appuyez sur Start sur la console » au bout de 12 s. Un Start sur la console reprend aussi la séance dans l'appli.
+- **Journal Bluetooth** (Réglages) : commandes envoyées, réponses et états du tapis, avec Copier, pour le diagnostic.
 - « Démarrer sans piloter le tapis » ne vaut que pour la séance en cours ; le pilotage se coupe durablement dans Réglages.
 
 Commandes envoyées (point de contrôle FTMS 0x2AD9) : demande de contrôle `00`, démarrage `07`, pente `03` (0,1 %), vitesse `02` (0,01 km/h), pause `08 02`, arrêt `08 01`.

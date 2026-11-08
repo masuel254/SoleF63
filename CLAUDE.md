@@ -57,7 +57,7 @@ Coquille fixe : `html/body` en `overflow:hidden`, seule `.scroll` défile, champ
 ### Limites
 `VMIN 0,8`, `VMAX 18` km/h, `PMIN 0`, `PMAX 15` % (pente max du F63). Création auto plafonnée par `walkMax` / `runMax` (Réglages).
 
-## 5. Fonctions en place (état au 15/10/2026, page v12)
+## 5. Fonctions en place (état au 08/11/2026, page v13)
 
 Quatre onglets : **Programmes**, **Créer**, **Séance**, **Réglages**.
 
@@ -68,7 +68,7 @@ Quatre onglets : **Programmes**, **Créer**, **Séance**, **Réglages**.
 - **Réglages** : poids, vitesses max marche/course, sons, export/import, Bluetooth, rubrique Application avec bouton **Rechercher** une mise à jour, version affichée « Version du … · page vX ».
 
 ### Pilotage Bluetooth (FTMS)
-Service 0x1826 ; Treadmill Data 0x2ACD ; Control Point 0x2AD9 (`00` contrôle, `07` start, `02` vitesse 0,01 km/h, `03` pente 0,1 %, `08 02` pause, `08 01` stop) ; Status 0x2ADA. UUID en 128 bits texte (Bluefy l'exige). Constat réel sur le F63 : **la pente est acceptée, la vitesse est refusée** (code résultat 5) → mode mixte : pente pilotée, vitesse guidée à l'écran (« ▲ Accélérez : 1,0 → 4,2 ») d'après la vitesse réelle ; refus mémorisé (`speedManualFor`), lien « Retester ». Safari iOS n'a pas Web Bluetooth : Bluefy obligatoire. Une seule appli connectée à la fois (fermer Kinomap).
+Service 0x1826 ; Treadmill Data 0x2ACD ; Control Point 0x2AD9 (`00` contrôle, `07` start, `02` vitesse 0,01 km/h, `03` pente 0,1 %, `08 02` pause, `08 01` stop) ; Status 0x2ADA. UUID en 128 bits texte (Bluefy l'exige). Constat réel sur le F63 : **la pente est acceptée, la vitesse est refusée** (code résultat 5) → mode mixte : pente pilotée, vitesse guidée à l'écran (« ▲ Accélérez : 1,0 → 4,2 ») d'après la vitesse réelle ; refus mémorisé (`speedManualFor`), lien « Retester ». Reprise après pause (v13) : chrono figé tant que la bande ne tourne pas (`rs.waitBelt`), relance par étapes (`beltWatch` : 4 s contrôle + `07`, 8 s `08 01` puis `07`, 12 s message console), statut `04` (relance console) reprend la séance ; journal Bluetooth (`btLog`) dans Réglages. Safari iOS n'a pas Web Bluetooth : Bluefy obligatoire. Une seule appli connectée à la fois (fermer Kinomap).
 
 ## 6. Procédure de déploiement (à suivre à chaque envoi)
 
