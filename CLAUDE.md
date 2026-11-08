@@ -57,14 +57,14 @@ Coquille fixe : `html/body` en `overflow:hidden`, seule `.scroll` défile, champ
 ### Limites
 `VMIN 0,8`, `VMAX 18` km/h, `PMIN 0`, `PMAX 15` % (pente max du F63). Création auto plafonnée par `walkMax` / `runMax` (Réglages).
 
-## 5. Fonctions en place (état au 08/11/2026, page v13)
+## 5. Fonctions en place (état au 08/11/2026, page v14)
 
 Quatre onglets : **Programmes**, **Créer**, **Séance**, **Réglages**.
 
 - **Programmes** : tuiles 2 colonnes ; puces de durée pour filtrer ; tri par durée croissante puis **kcal croissantes** puis nom. Tuile : durée, kcal, km, nom court (`shortName`), étoiles (grises « à noter » si non noté), profil, Vmoy/Pmoy. Appui long → Lancer, Ouvrir, Renommer, Dupliquer, Supprimer (Annuler 5 s). Bouton « Tout effacer » (ou « Effacer les N programmes de X min » si filtre), confirmation + Annuler 5 s.
 - **Créer** : automatique (durée, kcal visées, marche/course, forme intervalles/pyramide/régulier, bissection sur `k` dans `generateAuto`) ou manuel. Case **Spécial F63** (cochée par défaut) : `buildF63`, vitesse choisie (+/− 0,1, mémorisée par type, plafonnée au max du type) sur les paliers 2 à 17, 1er et dernier à 75 %, seule la pente varie pour atteindre les kcal. Décochée : `buildAuto` (vitesse puis pente).
 - **Fiche / édition** : + / − par palier (pente 1 %, vitesse 0,1), graphique histogramme vitesse + courbe pente (`profileSvg`), totaux.
-- **Séance** (plein écran) : décompte par palier, consignes, bips (15 sons, défaut « bip doux » volume 100) et voix (Coupée / Auto / Toujours ; Auto = parle seulement au départ et quand la vitesse change), Wake Lock, bilan de fin avec **note 1 à 5 étoiles** (préremplie avec la dernière note, modifiable). Onglet Séance : programme courant + **historique** des séances terminées (date, heures, durée, kcal, programme, étoiles, total).
+- **Séance** (plein écran) : décompte par palier, consignes, bips (15 sons, défaut « bip doux » volume 100) et voix (Coupée / Auto / Toujours ; Auto = parle seulement au départ et quand la vitesse change), Wake Lock (redemandé au retour au premier plan et vérifié toutes les 5 s par `keepAwake`, car libéré par le système lors d'un appel ; son relancé s'il est « interrupted »), bilan de fin avec **note 1 à 5 étoiles** (préremplie avec la dernière note, modifiable). Onglet Séance : programme courant + **historique** des séances terminées (date, heures, durée, kcal, programme, étoiles, total).
 - **Réglages** : poids, vitesses max marche/course, sons, export/import, Bluetooth, rubrique Application avec bouton **Rechercher** une mise à jour, version affichée « Version du … · page vX ».
 
 ### Pilotage Bluetooth (FTMS)

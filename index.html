@@ -334,7 +334,7 @@ select.txt{appearance:auto}
 <script>
 (() => {
   /* ===================== Constantes et outils ===================== */
-  const PAGE_BUILD = 'v13';   // change à chaque envoi : affiché à côté de la version
+  const PAGE_BUILD = 'v14';   // change à chaque envoi : affiché à côté de la version
   const N = 18, VMIN = 0.8, VMAX = 18, PMIN = 0, PMAX = 15;
   const KEY = 'solef63.programs.v1';
   const $ = id => document.getElementById(id);
@@ -1237,7 +1237,8 @@ select.txt{appearance:auto}
       master.connect(comp); comp.connect(ctx.destination);
       audio = { ctx, master };
     }
-    if (audio.ctx.state === 'suspended') audio.ctx.resume();
+    // iOS met le son en « interrupted » pendant un appel : on le relance dès que possible
+    if (audio.ctx.state !== 'running' && audio.ctx.state !== 'closed') audio.ctx.resume().catch(() => {});
     return audio;
   }
   /* Briques de synthèse : tout est généré par le navigateur, aucun fichier audio à télécharger. */
@@ -1700,6 +1701,27 @@ select.txt{appearance:auto}
     $('rQuit').hidden = rs.playing;
     $('rHint').textContent = rs.playing ? 'Mettez en pause pour quitter.' : (rs.elapsed > 0 ? 'En pause.' : 'Prêt.');
   }
+  // Écran allumé pendant la séance. Le système libère ce verrou dès que l'appli passe en arrière-plan
+  // (appel entrant, notification plein écran…) : on le redemande au retour et on vérifie en continu.
+  async function keepAwake(){
+    if (!rs || !rs.playing || document.visibilityState !== 'visible' || !navigator.wakeLock) return;
+    if (rs.lock && !rs.lock.released) return;
+    rs.lockTry = Date.now();
+    try {
+      const l = await navigator.wakeLock.request('screen');
+      if (!rs || !rs.playing){ l.release().catch(() => {}); return; }
+      rs.lock = l;
+      l.addEventListener('release', () => { if (rs && rs.playing) setTimeout(keepAwake, 1000); });
+    } catch(e){}
+  }
+  function onBack(){
+    if (document.visibilityState !== 'visible') return;
+    if (audio && audio.ctx.state !== 'running' && audio.ctx.state !== 'closed') audio.ctx.resume().catch(() => {});
+    if (rs && rs.playing){ keepAwake(); tick(false); }
+  }
+  document.addEventListener('visibilitychange', onBack);
+  window.addEventListener('pageshow', onBack);
+  window.addEventListener('focus', onBack);
   async function togglePlay(opts = {}){
     if (!rs || rs.done) return;
     // Premier démarrage piloté : confirmation de sécurité
@@ -1727,7 +1749,7 @@ select.txt{appearance:auto}
         // Le chrono attend que la bande tourne (si le tapis transmet sa vitesse)
         if (bt.live.v != null && bt.live.v < .3){ rs.waitBelt = Date.now(); rs.beltStep = opts.machine ? 3 : (rs.elapsed > 0 ? 0 : 1); beltWatch(); }
       }
-      try { rs.lock = await navigator.wakeLock?.request('screen'); } catch(e){}
+      keepAwake();
     } else {
       clearInterval(rs.timer); clearTimeout(rs.beltT); rs.waitBelt = 0; try { rs.lock?.release(); } catch(e){}
       if (!opts.machine) btPause();
@@ -1741,6 +1763,7 @@ select.txt{appearance:auto}
       else { rs.last = performance.now(); if (!btDriving()) rs.waitBelt = 0; else $('rHint').textContent = rs.beltStep >= 3 ? 'Le tapis ne repart pas : appuyez sur Start sur la console.' : 'Démarrage du tapis…'; }
     }
     if (rs.playing && !manual){ const n = performance.now(); rs.elapsed += (n - rs.last) / 1000; rs.last = n; }
+    if (rs.playing && (!rs.lock || rs.lock.released) && Date.now() - (rs.lockTry || 0) > 5000) keepAwake();
     if (rs.playing && manual) rs.last = performance.now();
     rs.elapsed = Math.min(rs.elapsed, rs.total);
     const p = rs.p, i = Math.min(N - 1, Math.floor(rs.elapsed / rs.segSec));
