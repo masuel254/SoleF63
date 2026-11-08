@@ -353,7 +353,7 @@ select.txt{appearance:auto}
 <script>
 (() => {
   /* ===================== Constantes et outils ===================== */
-  const PAGE_BUILD = 'v15';   // change à chaque envoi : affiché à côté de la version
+  const PAGE_BUILD = 'v16';   // change à chaque envoi : affiché à côté de la version
   const N = 18, VMIN = 0.8, VMAX = 18, PMIN = 0, PMAX = 15;
   const KEY = 'solef63.programs.v1';
   const $ = id => document.getElementById(id);
@@ -512,18 +512,34 @@ select.txt{appearance:auto}
     const m = settings.walkMax;
     return { label: 'Marche', vmax: m, pmax: PMAX, warm: [.62 * m, .724 * m], cool: [.724 * m, .62 * m], hLo: .793 * m, lLo: .655 * m, lHi: .83 * m };
   }
-  const VARIANTS = { intervals: 'Intervalles', pyramid: 'Pyramide', steady: 'Régulier' };
+  const VARIANTS = { intervals: 'Intervalles', pyramid: 'Pyramide', steady: 'Régulier', mix: 'Mixte' };
+  // Forme des n paliers centraux. Mixte : intervalles (début, mixA %), pyramide (milieu), intervalles (fin, mixC %).
+  function pattern(o, n){
+    const out = [];
+    const add = (kind, m) => {
+      const h = (m - 1) / 2;
+      for (let j = 0; j < m; j++){
+        if (kind === 'int') out.push({ k: j % 2 === 1 ? 'hi' : 'lo' });
+        else if (kind === 'pyr') out.push({ k: 'pyr', f: h > 0 ? 1 - Math.abs(j - h) / h : 1 });
+        else out.push({ k: 'st', j });
+      }
+    };
+    if (o.variant === 'mix'){ const a = mixCount(n, o.mixA), c = mixCount(n, o.mixC); add('int', a); add('pyr', n - a - c); add('int', c); }
+    else add(o.variant === 'intervals' ? 'int' : o.variant === 'pyramid' ? 'pyr' : 'st', n);
+    return out;
+  }
+  const mixCount = (n, pct) => Math.round(n * (pct || 0) / 100);
   function buildAuto(o, k){
     const c = modeCfg(o.type), s = Math.min(k, 1), g = Math.max(0, k - 1);
     const h = c.hLo + (c.vmax - c.hLo) * s, l = c.lLo + (c.lHi - c.lLo) * s, P = 1 + (c.pmax - 1) * g;
     const main = [];
-    for (let i = 0; i < 14; i++){
+    pattern(o, 14).forEach(x => {
       let v, p;
-      if (o.variant === 'intervals'){ const hi = i % 2 === 1; v = hi ? h : l; p = hi ? P : P * .5; }
-      else if (o.variant === 'pyramid'){ const f = 1 - Math.abs(i - 6.5) / 6.5; v = l + (h - l) * f; p = P * (.3 + .7 * f); }
-      else { v = l + (h - l) * .8; p = P * (i % 4 < 2 ? 1 : .75); }
+      if (x.k === 'hi' || x.k === 'lo'){ const hi = x.k === 'hi'; v = hi ? h : l; p = hi ? P : P * .5; }
+      else if (x.k === 'pyr'){ v = l + (h - l) * x.f; p = P * (.3 + .7 * x.f); }
+      else { v = l + (h - l) * .8; p = P * (x.j % 4 < 2 ? 1 : .75); }
       main.push({ v, p });
-    }
+    });
     const segs = [{ v: c.warm[0], p: 0 }, { v: c.warm[1], p: Math.min(1, P) }, ...main, { v: c.cool[0], p: Math.min(1, P) }, { v: c.cool[1], p: 0 }];
     return segs.map(x => ({ v: r1(clamp(x.v, VMIN, c.vmax)), p: Math.round(clamp(x.p, PMIN, c.pmax)) }));
   }
@@ -533,13 +549,10 @@ select.txt{appearance:auto}
   function buildF63(o, k){
     const c = modeCfg(o.type), V = o.v63, P = c.pmax * clamp(k, 0, 1);
     const main = [];
-    for (let i = 0; i < 16; i++){
-      let p;
-      if (o.variant === 'intervals') p = i % 2 === 1 ? P : P * .4;
-      else if (o.variant === 'pyramid'){ const f = 1 - Math.abs(i - 7.5) / 7.5; p = P * (.25 + .75 * f); }
-      else p = P * (i % 4 < 2 ? 1 : .8);
+    pattern(o, 16).forEach(x => {
+      const p = x.k === 'hi' ? P : x.k === 'lo' ? P * .4 : x.k === 'pyr' ? P * (.25 + .75 * x.f) : P * (x.j % 4 < 2 ? 1 : .8);
       main.push({ v: V, p });
-    }
+    });
     const segs = [{ v: V * .75, p: 0 }, ...main, { v: V * .75, p: 0 }];
     return segs.map(x => ({ v: r1(clamp(x.v, VMIN, VMAX)), p: Math.round(clamp(x.p, PMIN, c.pmax)) }));
   }
@@ -559,13 +572,13 @@ select.txt{appearance:auto}
   /* ===================== État de l'interface ===================== */
   const S = {
     tab: 'list', view: 'list', detailId: null,
-    create: Object.assign({ mode: 'auto', minutes: 40, kcal: 400, type: 'walk', variant: 'intervals', f63: true, v63w: null, v63r: null, name: '', nameTouched: false,
+    create: Object.assign({ mode: 'auto', minutes: 40, kcal: 400, type: 'walk', variant: 'intervals', f63: true, v63w: null, v63r: null, mixA: 25, mixC: 25, name: '', nameTouched: false,
       mMinutes: 40, mStart: 'flat', mCopy: null, mName: '' }, ls.get(KEY + '.auto', {}), { nameTouched: false, name: '' }),
     edit: null, res: null
   };
   if (!['walk', 'run'].includes(S.create.type)) S.create.type = S.create.mode === 'run' ? 'run' : 'walk';
   if (!['auto', 'manual'].includes(S.create.mode)) S.create.mode = 'auto';
-  const saveCreatePrefs = () => { const c = S.create; ls.set(KEY + '.auto', { mode: c.mode, minutes: c.minutes, kcal: c.kcal, type: c.type, variant: c.variant, f63: c.f63, v63w: c.v63w, v63r: c.v63r, mMinutes: c.mMinutes, mStart: c.mStart }); };
+  const saveCreatePrefs = () => { const c = S.create; ls.set(KEY + '.auto', { mode: c.mode, minutes: c.minutes, kcal: c.kcal, type: c.type, variant: c.variant, f63: c.f63, v63w: c.v63w, v63r: c.v63r, mixA: c.mixA, mixC: c.mixC, mMinutes: c.mMinutes, mStart: c.mStart }); };
 
   /* ===================== Navigation ===================== */
   const TABS = [
@@ -652,7 +665,7 @@ select.txt{appearance:auto}
   const starsHtml = n => `<span class="stars" aria-label="${n ? n + ' étoile' + (n > 1 ? 's' : '') + ' sur 5' : 'Pas encore notée'}">${[1, 2, 3, 4, 5].map(i => `<svg viewBox="0 0 24 24" class="${i <= n ? 'on' : ''}">${STAR}</svg>`).join('')}</span>`;
   const avgLine = c => `<span class="m avg"><span class="vs">Vmoy. ${f1.format(c.avgV)} km/h</span> · <span class="ps">Pmoy. ${f1.format(c.avgP)} %</span></span>`;
   // Nom affiché : version courte pour un programme automatique dont le nom n'a pas été changé
-  const AUTO_NAME = /^(Marche|Course) (intervalles|pyramide|régulier)( F63)? \d+ min · \d+ kcal$/i;
+  const AUTO_NAME = /^(Marche|Course) (intervalles|pyramide|régulier|mixte)( F63)? \d+ min · \d+ kcal$/i;
   function shortName(p){
     const m = AUTO_NAME.exec(p.name || '');
     if (!m) return p.name;
@@ -721,6 +734,9 @@ select.txt{appearance:auto}
           <div class="field"><span class="lab">Objectif</span>${stepHtml('ckcal', c.kcal, 'kcal')}</div>
           <div class="field"><span class="lab">Type<small id="c-max"></small></span><div class="mini-seg">${segBtns('ctype', c.type, [['walk', 'Marche'], ['run', 'Course']])}</div></div>
           <div class="field form-forme"><span class="lab">Forme${c.f63 ? '<small>appliquée à la pente</small>' : ''}</span><div class="mini-seg">${segBtns('cvar', c.variant, Object.entries(VARIANTS))}</div></div>
+          ${c.variant === 'mix' ? `<div class="field"><span class="lab">Début intervalles<small id="mix-a"></small></span>${stepHtml('cmixa', c.mixA, '%')}</div>
+          <div class="field"><span class="lab">Milieu pyramide<small id="mix-b"></small></span><span class="val" id="mix-bv"></span></div>
+          <div class="field"><span class="lab">Fin intervalles<small id="mix-c"></small></span>${stepHtml('cmixc', c.mixC, '%')}</div>` : ''}
           <div class="field"><span class="lab">Spécial F63<small>Vitesse fixe, seule la pente varie</small></span><button type="button" class="sw" role="switch" data-cf63 aria-checked="${c.f63}" aria-label="Spécial F63"></button></div>
           ${c.f63 ? `<div class="field"><span class="lab">Vitesse<small>paliers 2 à 17 · 1er et dernier à 75 %</small></span>${stepHtml('cv63', f1.format(f63Speed(c.type)), 'km/h')}</div>` : ''}
         </div>
@@ -764,7 +780,13 @@ select.txt{appearance:auto}
     $('c-max').textContent = `max ${f1.format(modeCfg(c.type).vmax)} km/h · Réglages`;
     if (!c.nameTouched){ c.name = autoName(); }
     const ni = $('c-name'); if (ni && document.activeElement !== ni) ni.value = c.name;
-    const res = S.res = generateAuto({ minutes: c.minutes, kcal: c.kcal, type: c.type, variant: c.variant, f63: c.f63, v63: f63Speed(c.type) });
+    const res = S.res = generateAuto({ minutes: c.minutes, kcal: c.kcal, type: c.type, variant: c.variant, f63: c.f63, v63: f63Speed(c.type), mixA: c.mixA, mixC: c.mixC });
+    if (c.variant === 'mix'){
+      const n = c.f63 ? 16 : 14, a = mixCount(n, c.mixA), z = mixCount(n, c.mixC), pl = k => `${k} palier${k > 1 ? 's' : ''}`;
+      $('st-cmixa').innerHTML = `${c.mixA}<small>%</small>`; $('st-cmixc').innerHTML = `${c.mixC}<small>%</small>`;
+      $('mix-a').textContent = pl(a); $('mix-c').textContent = pl(z); $('mix-b').textContent = pl(n - a - z);
+      $('mix-bv').innerHTML = `<b>${100 - c.mixA - c.mixC}</b> %`;
+    }
     const sv = $('st-cv63'); if (sv) sv.innerHTML = `${f1.format(f63Speed(c.type))}<small>km/h</small>`;
     const cc = compute({ minutes: c.minutes, segs: res.segs });
     $('pv-chart').innerHTML = profileSvg(res.segs, { W: 340, H: 96, dots: true, lw: 2 });
@@ -1101,7 +1123,7 @@ select.txt{appearance:auto}
     if (t.dataset.ctype){ S.create.type = t.dataset.ctype; t.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); refreshCreate(); return; }
     if (t.dataset.vmode){ const v = t.dataset.vmode; settings.voice = v !== 'off'; if (v !== 'off') settings.voiceMode = v; saveSettings(); t.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); if (settings.voice) say(v === 'auto' ? 'Voix automatique' : 'Voix activée', true); else { try { speechSynthesis.cancel(); } catch(err){} } return; }
     if (t.hasAttribute('data-cf63')){ S.create.f63 = !S.create.f63; render(); return; }
-    if (t.dataset.cvar){ S.create.variant = t.dataset.cvar; t.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); refreshCreate(); return; }
+    if (t.dataset.cvar){ const was = S.create.variant; S.create.variant = t.dataset.cvar; if ((was === 'mix') !== (S.create.variant === 'mix')){ render(); return; } t.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); refreshCreate(); return; }
     if (t.dataset.mstart){ S.create.mStart = t.dataset.mstart; if (!S.create.mCopy && progs[0]) S.create.mCopy = progs[0].id; saveCreatePrefs(); render(); return; }
     if (t.dataset.snd){ const k = t.dataset.snd; if (k === 'voice'){ cycleVoice(); sndRefresh(document); return; } settings.beep = !settings.beep; saveSettings(); t.setAttribute('aria-pressed', settings.beep); if (settings.beep) beepCount(); return; }
     if (t.dataset.sw){ const k = t.dataset.sw; settings[k] = !settings[k]; saveSettings(); t.setAttribute('aria-checked', settings[k]); btRefreshUi(); return; }
@@ -1179,6 +1201,10 @@ select.txt{appearance:auto}
     const [key, d] = spec.split(':'), dir = +d;
     if (key === 'cmin'){ S.create.minutes = clamp(S.create.minutes + dir, 5, 240); refreshCreate(); return true; }
     if (key === 'ckcal'){ S.create.kcal = clamp(Math.round((S.create.kcal + dir * 10) / 10) * 10, 30, 3000); refreshCreate(); return true; }
+    if (key === 'cmixa' || key === 'cmixc'){
+      const c = S.create, k = key === 'cmixa' ? 'mixA' : 'mixC', o = key === 'cmixa' ? c.mixC : c.mixA, b = c[k];
+      c[k] = clamp(b + dir * 5, 0, 80 - o); refreshCreate(); return c[k] !== b;
+    }
     if (key === 'cv63'){ const t = S.create.type, c = modeCfg(t), k = t === 'run' ? 'v63r' : 'v63w', b = f63Speed(t); S.create[k] = r1(clamp(b + dir * .1, VMIN, c.vmax)); refreshCreate(); return S.create[k] !== b; }
     if (key === 'mmin'){ S.create.mMinutes = clamp(S.create.mMinutes + dir, 5, 240); saveCreatePrefs(); refreshCreate(); return true; }
     if (key === 'emin'){ const d2 = S.edit.draft; const b = d2.minutes; d2.minutes = clamp(d2.minutes + dir, 5, 240); refreshEdit(); return b !== d2.minutes; }
